@@ -76,6 +76,12 @@ kbd {
   min-height: 100dvh;
   padding: max(1.5rem, env(safe-area-inset-top)) var(--gutter)
     max(3rem, env(safe-area-inset-bottom));
+  /*
+   * Decoration that reaches past the screen's sides (the bullseye bloom) must
+   * not make the page pannable sideways on phones. `clip`, unlike `hidden`,
+   * doesn't create a scroll container, so the sticky round header still works.
+   */
+  overflow-x: clip;
 }
 
 .screen {

@@ -1,0 +1,294 @@
+/* Base elements, shared building blocks and motion. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /*
+   * Always reserve the scrollbar's space, so the page never jumps sideways when
+   * scrolling is locked under a pop-up or a screen is too short to scroll.
+   * Reserved on both sides to keep the centred column truly centred.
+   * Overlay scrollbars (phones, default macOS) take no space and are unaffected.
+   */
+  scrollbar-gutter: stable both-edges;
+  background-color: var(--paper);
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+strong {
+  font-weight: 800;
+}
+
+kbd {
+  font: inherit;
+  font-size: 0.8em;
+  font-weight: 700;
+  padding: 0.1em 0.5em;
+  border-radius: 0.5em;
+  background: var(--paper-deep);
+  color: var(--ink-soft);
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+/* Headings that receive focus programmatically don't need a ring. */
+[tabindex='-1']:focus {
+  outline: none;
+}
+
+/* ---------------------------------------------------------------- layout */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100dvh;
+  padding: max(1.5rem, env(safe-area-inset-top)) var(--gutter)
+    max(3rem, env(safe-area-inset-bottom));
+}
+
+.screen {
+  width: 100%;
+  max-width: var(--column);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: screen-in var(--duration-slow) var(--ease-soft) both;
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(3rem, 13vw, 4.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.wordmark-small {
+  font-size: 2.25rem;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.25rem;
+}
+
+.quiet {
+  color: var(--ink-soft);
+}
+
+.small {
+  font-size: 0.9375rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Off-screen input that keeps the phone keyboard open between screens. */
+.keyboard-proxy {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  font-size: 16px;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- buttons */
+
+.button {
+  /* Also used on links that look like buttons. */
+  display: inline-block;
+  text-decoration: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  padding: 0.8rem 1.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-quick) ease,
+    transform var(--duration-quick) ease;
+}
+
+.button:active {
+  transform: scale(0.97);
+}
+
+.button-primary {
+  background: var(--ink);
+  color: var(--ink-inverse);
+}
+
+.button-primary:hover {
+  background: color-mix(in srgb, var(--ink) 86%, var(--paper));
+}
+
+.button-big {
+  font-size: 1.25rem;
+  padding: 0.95rem 3rem;
+}
+
+.button-quiet {
+  background: transparent;
+  color: var(--ink-soft);
+  padding: 0.5rem 1.1rem;
+}
+
+.button-quiet:hover {
+  background: var(--paper-deep);
+  color: var(--ink);
+}
+
+/* ---------------------------------------------------------------- zones */
+
+[data-zone='cold'] {
+  --zone-tint: var(--zone-cold);
+  --zone-mark: var(--mark-cold);
+}
+[data-zone='cool'] {
+  --zone-tint: var(--zone-cool);
+  --zone-mark: var(--mark-cool);
+}
+[data-zone='warm'] {
+  --zone-tint: var(--zone-warm);
+  --zone-mark: var(--mark-warm);
+}
+[data-zone='hot'] {
+  --zone-tint: var(--zone-hot);
+  --zone-mark: var(--mark-hot);
+}
+[data-zone='bullseye'] {
+  --zone-tint: var(--zone-bullseye);
+  --zone-mark: var(--mark-bullseye);
+}
+
+/* ---------------------------------------------------------------- motion */
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ease-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+@keyframes soft-pop {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--zone-mark) 70%, transparent);
+  }
+  35% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 14px transparent;
+  }
+}
+
+@keyframes dot-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  45% {
+    transform: scale(1.6);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+}
+
+@keyframes wobble-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) rotate(-3deg) scale(0.96);
+  }
+  55% {
+    opacity: 1;
+    transform: rotate(2deg) scale(1.02);
+  }
+  80% {
+    transform: rotate(-1deg);
+  }
+}
+
+@keyframes bloom {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.35);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+
+  .bloom {
+    display: none;
+  }
+}

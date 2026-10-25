@@ -1,0 +1,505 @@
+/* Start, results, loading and error screens. */
+
+.loading {
+  margin-top: 30vh;
+  color: var(--ink-soft);
+  /* Quick loads shouldn't flash a message. */
+  animation: fade-in var(--duration-gentle) ease 300ms both;
+}
+
+.load-error {
+  gap: 1rem;
+  margin-top: 18vh;
+}
+
+/* ---------------------------------------------------------------- start */
+
+.start {
+  gap: 0.5rem;
+  padding-top: clamp(1rem, 6vh, 4rem);
+}
+
+.howto {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 1.75rem 0 1.5rem;
+  font-size: 1.125rem;
+  line-height: 1.55;
+  text-wrap: balance;
+}
+
+.zone-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0 0 2.25rem;
+  padding: 0;
+  list-style: none;
+}
+
+.zone-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: var(--radius-pill);
+  background: var(--zone-tint);
+  color: var(--zone-ink);
+  font-size: 0.9375rem;
+}
+
+.zone-chip-label {
+  font-weight: 800;
+}
+
+.zone-chip-range {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.start .button-big {
+  margin-bottom: 0.75rem;
+}
+
+.start .stats {
+  margin-top: 2.5rem;
+}
+
+/* ---------------------------------------------------------------- results */
+
+.results {
+  gap: 0.25rem;
+  padding-top: clamp(0.5rem, 4vh, 2.5rem);
+}
+
+.score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-weight: inherit;
+}
+
+.score-number {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(4.5rem, 22vw, 6.5rem);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.score-unit {
+  font-size: 1.125rem;
+  color: var(--ink-soft);
+}
+
+.score-summary {
+  margin-top: 0.75rem;
+  font-size: 1.0625rem;
+}
+
+.share {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 1.75rem 0 2rem;
+}
+
+.share-status {
+  min-height: 1.5em;
+}
+
+.share-fallback {
+  margin: 0;
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius-soft);
+  background: var(--paper-deep);
+  font: inherit;
+  white-space: pre-wrap;
+  user-select: all;
+}
+
+.breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each round is a button that opens its word list. */
+.breakdown-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.85rem 1.4rem;
+  border: 0;
+  border-radius: var(--radius-soft);
+  background: color-mix(in srgb, var(--zone-tint, var(--paper-deep)) 60%, var(--paper));
+  color: var(--ink);
+  --row-soft: var(--ink-soft);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-quick) ease,
+    transform var(--duration-quick) ease;
+  animation: ease-in-down var(--duration-gentle) var(--ease-soft) both;
+}
+
+.breakdown-row:hover {
+  background: color-mix(in srgb, var(--zone-tint, var(--paper-deeper)) 85%, var(--paper));
+}
+
+.breakdown-row:active {
+  transform: scale(0.985);
+}
+
+.breakdown li:nth-child(2) .breakdown-row {
+  animation-delay: 60ms;
+}
+.breakdown li:nth-child(3) .breakdown-row {
+  animation-delay: 120ms;
+}
+.breakdown li:nth-child(4) .breakdown-row {
+  animation-delay: 180ms;
+}
+.breakdown li:nth-child(5) .breakdown-row {
+  animation-delay: 240ms;
+}
+
+.breakdown-row[data-zone='none'] {
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.breakdown-row[data-zone='none']:hover {
+  background: var(--paper-deep);
+}
+
+.breakdown-tip {
+  margin: 0.85rem 0 2.75rem;
+}
+
+.breakdown-dot {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background: var(--zone-mark, var(--ink-faint));
+}
+
+.breakdown-words {
+  min-width: 0;
+}
+
+.breakdown-target,
+.breakdown-detail {
+  display: block;
+}
+
+.breakdown-target {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.breakdown-detail {
+  font-size: 0.9375rem;
+  color: var(--row-soft);
+  line-height: 1.4;
+}
+
+.breakdown-points {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+}
+
+.breakdown-total {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.breakdown-zone {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--row-soft);
+}
+
+@media (prefers-color-scheme: dark) {
+  /* Like the guess pills: muted pastel with navy text (mixing into navy turns grey). */
+  .breakdown-row:not([data-zone='none']) {
+    background: var(--zone-tint);
+    color: var(--zone-ink);
+    --row-soft: color-mix(in srgb, var(--zone-ink) 72%, transparent);
+  }
+
+  .breakdown-row:not([data-zone='none']):hover {
+    background: color-mix(in srgb, var(--zone-tint) 88%, white);
+  }
+
+  .breakdown-row:not([data-zone='none']) .breakdown-dot {
+    background: color-mix(in srgb, var(--zone-ink) 45%, transparent);
+  }
+}
+
+.next-puzzle {
+  margin-top: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ---------------------------------------------------------------- stats */
+
+.stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.stats-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 2.25rem;
+  margin: 0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+}
+
+.stat dt {
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+
+.stat dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.75rem;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------- practice */
+
+.play-another {
+  margin-top: 1.75rem;
+}
+
+.play-another + .share {
+  margin-top: 0.5rem;
+}
+
+/* ---------------------------------------------------------------- calendar */
+
+.calendar {
+  gap: 0.35rem;
+  padding-top: clamp(0.5rem, 4vh, 2.5rem);
+}
+
+.calendar-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(2.25rem, 10vw, 3rem);
+  line-height: 1.1;
+}
+
+.calendar-month {
+  width: 100%;
+  margin: 1.75rem 0 1.5rem;
+}
+
+.calendar-nav {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+}
+
+.calendar-month-name {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.375rem;
+  white-space: nowrap;
+}
+
+.calendar-step {
+  justify-self: start;
+  border: 0;
+  border-radius: var(--radius-pill);
+  padding: 0.4rem 0.9rem;
+  background: transparent;
+  color: var(--ink-soft);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: background-color var(--duration-quick) ease;
+}
+
+.calendar-step:hover {
+  background: var(--paper-deep);
+  color: var(--ink);
+}
+
+.calendar-step-next {
+  justify-self: end;
+}
+
+/* Hidden steps keep their grid cell so the month name stays centred. */
+.calendar-step[hidden] {
+  display: block;
+  visibility: hidden;
+}
+
+.calendar-weekdays,
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.calendar-weekdays {
+  margin-bottom: 0.4rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.calendar-day > a,
+.calendar-day > span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1 / 1.08;
+  border-radius: var(--radius-pill);
+  color: inherit;
+  text-decoration: none;
+  line-height: 1.1;
+}
+
+.calendar-day > a {
+  background: var(--paper-deep);
+  transition:
+    background-color var(--duration-quick) ease,
+    transform var(--duration-quick) ease;
+}
+
+.calendar-day > a:hover {
+  background: var(--paper-deeper);
+  transform: translateY(-1px);
+}
+
+.calendar-day[data-zone] > a {
+  background: color-mix(in srgb, var(--zone-tint) 80%, var(--paper));
+}
+
+.calendar-day[data-zone] > a:hover {
+  background: var(--zone-tint);
+}
+
+.calendar-day[data-today]:not([data-zone]) > a {
+  background: var(--ink);
+  color: var(--ink-inverse);
+}
+
+.calendar-day[data-today] .calendar-date {
+  font-weight: 800;
+}
+
+.calendar-day.is-closed {
+  color: var(--ink-faint);
+}
+
+.calendar-date {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar-score {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+@media (prefers-color-scheme: dark) {
+  .calendar-day[data-zone] > a,
+  .calendar-day[data-zone] > a:hover {
+    background: var(--zone-tint);
+    color: var(--zone-ink);
+  }
+}
+
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem 0.9rem;
+  margin-top: 1rem;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+}
+
+.calendar-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.calendar-legend span::before {
+  content: '';
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--zone-mark);
+}
+
+.calendar-stats .stats {
+  margin-top: 2.25rem;
+}
+
+/* ---------------------------------------------------------------- links */
+
+.nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem 1.5rem;
+  margin-top: 2.25rem;
+}
+
+.nav-link {
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-underline-offset: 0.2em;
+}
+
+.nav-link:hover {
+  color: var(--ink);
+}

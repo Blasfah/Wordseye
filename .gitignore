@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+
+# Downloaded word vectors (hundreds of MB, see README)
+scripts/.cache/

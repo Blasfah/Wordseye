@@ -1,0 +1,346 @@
+/* The playing screen: progress, hint, guess box and guess pills. */
+
+.round {
+  /* Leaves room so the last pills can scroll above a phone keyboard. */
+  padding-bottom: 30vh;
+}
+
+/* Progress, hint and input stay pinned while the guess list scrolls under them. */
+.round-top {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--paper);
+  padding-bottom: 0.25rem;
+}
+
+.round-top::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 1.25rem;
+  background: linear-gradient(var(--paper), transparent);
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------- progress */
+
+.round-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  width: 100%;
+  padding: 0.5rem 0 0;
+}
+
+.round-dots {
+  display: flex;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dot {
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: var(--ink-faint);
+  transition:
+    background-color var(--duration-gentle) ease,
+    transform var(--duration-gentle) var(--ease-soft);
+}
+
+.dot[data-current] {
+  background: var(--ink-soft);
+  transform: scale(1.15);
+}
+
+.dot[data-zone] {
+  background: var(--zone-mark);
+}
+
+.dot.is-new {
+  animation: dot-pop var(--duration-slow) var(--ease-springy);
+}
+
+.timer {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.timer-track {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--paper-deep);
+  overflow: hidden;
+}
+
+.timer-fill {
+  height: 100%;
+  border-radius: inherit;
+  transform-origin: left center;
+  background: var(--mark-cool);
+  transition:
+    transform 250ms linear,
+    background-color 1.2s ease;
+}
+
+.timer-fill[data-mood='warm'] {
+  background: var(--mark-warm);
+}
+
+.timer-fill[data-mood='hot'] {
+  background: var(--mark-hot);
+}
+
+.timer-text {
+  min-width: 2.6rem;
+  text-align: right;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+
+/* ---------------------------------------------------------------- hint */
+
+.hint-block {
+  position: relative;
+  width: 100%;
+  padding: clamp(1.25rem, 5vh, 2.75rem) 0 clamp(1rem, 3vh, 1.75rem);
+}
+
+.hint-label {
+  font-size: 0.9375rem;
+  color: var(--ink-soft);
+}
+
+.hint-word {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  /* Big, but shrinks so long words still fit on one line. */
+  font-size: max(
+    2rem,
+    min(5.75rem, 16vw, calc(min(100vw - 2 * var(--gutter), var(--column)) / (var(--chars) * 0.62)))
+  );
+  padding-block: 0.08em;
+}
+
+.hint-word.is-fresh {
+  animation: screen-in var(--duration-gentle) var(--ease-soft) both;
+}
+
+.hint-word.is-celebrated {
+  animation: wobble-in var(--duration-slow) var(--ease-soft) both;
+}
+
+/* A soft wash of bullseye yellow behind the hint. */
+.bloom {
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  width: min(26rem, 90vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--mark-bullseye) 70%, transparent) 0%,
+    color-mix(in srgb, var(--zone-bullseye) 50%, transparent) 40%,
+    transparent 68%
+  );
+  pointer-events: none;
+  z-index: -1;
+  animation: bloom 1.4s var(--ease-soft) both;
+}
+
+/* ---------------------------------------------------------------- input */
+
+.guess-form {
+  width: 100%;
+}
+
+.guess-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.35rem 0.35rem 1.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--paper-deep);
+  transition: background-color var(--duration-quick) ease;
+}
+
+.guess-field:focus-within {
+  background: var(--paper-deeper);
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.guess-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.6rem 0;
+  border: 0;
+  background: transparent;
+  font-size: 1.375rem;
+  font-weight: 700;
+  outline: none;
+}
+
+.guess-input::placeholder {
+  color: var(--ink-soft);
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.guess-submit {
+  flex: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  padding: 0.65rem 1.2rem;
+  background: var(--ink);
+  color: var(--ink-inverse);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--duration-quick) ease;
+}
+
+.guess-submit:active {
+  transform: scale(0.96);
+}
+
+.feedback {
+  min-height: 3.2em;
+  padding: 0.75rem 0.5rem 0;
+  font-size: 1rem;
+  line-height: 1.45;
+  text-wrap: balance;
+}
+
+.feedback-text {
+  display: inline-block;
+  animation: fade-in var(--duration-gentle) ease both;
+}
+
+.round-actions {
+  display: flex;
+  justify-content: center;
+}
+
+/* ---------------------------------------------------------------- guesses */
+
+.guess-empty {
+  margin-top: 1.75rem;
+  font-size: 0.9375rem;
+}
+
+.guess-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guess-pill {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1.4rem;
+  border-radius: var(--radius-pill);
+  background: var(--zone-tint);
+  color: var(--zone-ink);
+}
+
+.guess-word {
+  font-size: 1.125rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.guess-meta {
+  display: flex;
+  gap: 0.75rem;
+  flex: none;
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.guess-zone {
+  opacity: 0.8;
+}
+
+.guess-rank {
+  min-width: 3.25rem;
+  text-align: right;
+  font-weight: 800;
+}
+
+.guess-pill.is-latest {
+  animation: ease-in-down var(--duration-gentle) var(--ease-soft) both;
+}
+
+.guess-pill.is-latest .guess-word {
+  font-weight: 800;
+}
+
+.guess-pill.is-warmer {
+  animation:
+    ease-in-down var(--duration-gentle) var(--ease-soft) both,
+    soft-pop var(--duration-slow) var(--ease-soft) 120ms;
+}
+
+/* Short screens (a phone with its keyboard open): tighten the pinned area. */
+@media (max-height: 560px) {
+  .hint-block {
+    padding: 0.5rem 0 0.6rem;
+  }
+
+  .hint-word {
+    font-size: max(
+      1.75rem,
+      min(
+        3.25rem,
+        12vw,
+        calc(min(100vw - 2 * var(--gutter), var(--column)) / (var(--chars) * 0.62))
+      )
+    );
+  }
+
+  .hint-label {
+    display: none;
+  }
+
+  .guess-input {
+    padding-block: 0.35rem;
+  }
+
+  .feedback {
+    min-height: 0;
+    padding-top: 0.35rem;
+    font-size: 0.9375rem;
+  }
+
+  .round-actions .button {
+    padding-block: 0.2rem;
+  }
+
+  .round {
+    padding-bottom: 0;
+  }
+}

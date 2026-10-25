@@ -1,0 +1,259 @@
+/* The word-list pop-up on the results screen, tinted with the round's zone. */
+
+/* Lock the page behind the pop-up. The scrollbar-gutter on html keeps it from shifting. */
+html:has(.words-dialog[open]) {
+  overflow: hidden;
+  /*
+   * The reserved gutters show only the page canvas, which the backdrop can't
+   * reach, so tint the canvas to match it. Fades in with the backdrop and snaps
+   * back on close, like the backdrop does.
+   */
+  background-color: var(--scrim-on-paper);
+  transition: background-color var(--duration-gentle) ease;
+}
+
+.words-dialog {
+  --sheet-height: min(46rem, calc(100dvh - 2rem));
+  /* Light theme: a soft wash of the zone colour, like the results rows. */
+  --sheet-soft: var(--ink-soft);
+  --sheet-raise: color-mix(in srgb, var(--paper) 72%, transparent);
+  --sheet-strong: var(--ink);
+  --sheet-on-strong: var(--paper);
+  --sheet-gutter: clamp(1.25rem, 5vw, 1.85rem);
+
+  width: min(34rem, calc(100vw - 2rem));
+  max-width: none;
+  max-height: var(--sheet-height);
+  padding: 0;
+  border: 0;
+  border-radius: 2rem;
+  background: color-mix(in srgb, var(--zone-tint, var(--paper-deep)) 62%, var(--paper));
+  color: var(--ink);
+  text-align: left;
+  overflow: hidden;
+  animation: sheet-in var(--duration-gentle) var(--ease-soft);
+}
+
+.words-dialog[data-zone='none'] {
+  background: var(--paper-deep);
+}
+
+.words-dialog::backdrop {
+  background: var(--scrim);
+  animation: fade-in var(--duration-gentle) ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  /* Dark theme: the muted pastel itself with navy text, like the guess pills. */
+  .words-dialog:not([data-zone='none']) {
+    background: var(--zone-tint);
+    color: var(--zone-ink);
+    --sheet-soft: color-mix(in srgb, var(--zone-ink) 72%, transparent);
+    --sheet-raise: color-mix(in srgb, white 34%, transparent);
+    --sheet-strong: var(--zone-ink);
+    --sheet-on-strong: var(--ink);
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+}
+
+.words-sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: var(--sheet-height);
+}
+
+.words-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.6rem calc(var(--sheet-gutter) - 0.35rem) 0 var(--sheet-gutter);
+}
+
+.words-eyebrow {
+  font-size: 0.9375rem;
+  color: var(--sheet-soft);
+}
+
+.words-target {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(2.25rem, 10vw, 3.25rem);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.words-close {
+  flex: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  padding: 0.5rem 1.15rem;
+  background: var(--sheet-raise);
+  color: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color var(--duration-quick) ease;
+}
+
+.words-close:hover {
+  background: var(--sheet-strong);
+  color: var(--sheet-on-strong);
+}
+
+.words-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem var(--sheet-gutter) 0;
+  line-height: 1.45;
+}
+
+.words-guesses {
+  font-size: 0.9375rem;
+  color: var(--sheet-soft);
+}
+
+/* ---------------------------------------------------------------- top N switch */
+
+.words-tabs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 1.1rem var(--sheet-gutter) 0.9rem;
+}
+
+.words-tabs-label {
+  margin-right: 0.35rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--sheet-soft);
+}
+
+.words-tab {
+  border: 0;
+  border-radius: var(--radius-pill);
+  padding: 0.4rem 0.95rem;
+  background: var(--sheet-raise);
+  color: inherit;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-quick) ease,
+    color var(--duration-quick) ease;
+}
+
+.words-tab[aria-pressed='true'] {
+  background: var(--sheet-strong);
+  color: var(--sheet-on-strong);
+}
+
+/* ---------------------------------------------------------------- word list */
+
+.words-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.25rem var(--sheet-gutter) var(--sheet-gutter);
+}
+
+.words-found {
+  margin-bottom: 1rem;
+  font-size: 0.9375rem;
+  color: var(--sheet-soft);
+}
+
+.words-band + .words-band {
+  margin-top: 1.4rem;
+}
+
+.words-band-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.45rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.words-band-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--zone-mark);
+}
+
+.words-band-range {
+  font-weight: 600;
+  color: var(--sheet-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.words-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* Row by row, so a long list reads in order as it scrolls. */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  column-gap: 1rem;
+  font-size: 0.9375rem;
+}
+
+.words-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-left: -0.55rem;
+  padding: 0.12rem 0.55rem;
+  border-radius: var(--radius-pill);
+  animation: fade-in var(--duration-gentle) ease both;
+}
+
+.words-rank {
+  min-width: 2.1em;
+  text-align: right;
+  font-size: 0.8125rem;
+  color: var(--sheet-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.words-word {
+  font-weight: 600;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  min-width: 0;
+}
+
+.words-item.is-target .words-word,
+.words-item.is-guessed .words-word {
+  font-weight: 800;
+}
+
+.words-item.is-guessed {
+  background: var(--sheet-raise);
+}
+
+/* The top 10 reads larger, in two roomy columns. */
+/* One column on phones, two where there is room. */
+.words-scroll[data-limit='10'] .words-list {
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  column-gap: 1.5rem;
+  font-size: 1rem;
+}
+
+.words-scroll[data-limit='10'] .words-item {
+  padding-block: 0.3rem;
+}
+
+.words-scroll[data-limit='10'] .words-word {
+  font-size: 1.1875rem;
+}

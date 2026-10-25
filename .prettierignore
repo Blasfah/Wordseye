@@ -1,0 +1,6 @@
+dist
+coverage
+public/data
+scripts/.cache
+scripts/output
+package-lock.json

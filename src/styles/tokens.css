@@ -1,0 +1,84 @@
+/* Design tokens. Everything visual hangs off these variables. */
+
+:root {
+  color-scheme: light;
+
+  /* Paper and ink */
+  --paper: #fbf7f2;
+  --paper-deep: #f3ece3;
+  --paper-deeper: #ebe2d6;
+  --ink: #3a3a3f;
+  --ink-soft: #6c6a72;
+  --ink-faint: #c9c1b6;
+  --ink-inverse: #fbf7f2;
+
+  /* Zone tints: backgrounds for pills and rows */
+  --zone-cold: #dce9f6;
+  --zone-cool: #d4efe2;
+  --zone-warm: #fde1cc;
+  --zone-hot: #f9c9cd;
+  --zone-bullseye: #fbe7a3;
+  --zone-ink: #3a3a3f;
+
+  /* Zone marks: deeper versions for small shapes (dots, the timer) */
+  --mark-cold: #9fbfe4;
+  --mark-cool: #8dd0b2;
+  --mark-warm: #f3b285;
+  --mark-hot: #ec919a;
+  --mark-bullseye: #f0c94f;
+
+  --focus-ring: #8fb4e3;
+  /* Washes out the page behind a pop-up, like a sheet of paper laid over it */
+  --scrim: rgb(236 228 218 / 0.82);
+  /* The same wash already laid over paper, as one solid colour */
+  --scrim-on-paper: color-mix(in srgb, rgb(236 228 218) 82%, var(--paper));
+
+  /* Type */
+  --font-display: 'Fredoka', 'Nunito', ui-rounded, 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --font-body: 'Nunito', ui-rounded, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Shape and space */
+  --radius-pill: 999px;
+  --radius-soft: 1.75rem;
+  --column: 30rem;
+  --gutter: 1.25rem;
+
+  /* Motion */
+  --ease-soft: cubic-bezier(0.22, 0.8, 0.3, 1);
+  --ease-springy: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-quick: 160ms;
+  --duration-gentle: 380ms;
+  --duration-slow: 700ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --paper: #1e2337;
+    --paper-deep: #282e47;
+    --paper-deeper: #313856;
+    --ink: #ece6dc;
+    --ink-soft: #a9abbd;
+    --ink-faint: #474e6c;
+    --ink-inverse: #1e2337;
+
+    /* Muted pastels, read with navy text */
+    --zone-cold: #a3bbda;
+    --zone-cool: #a2d2bf;
+    --zone-warm: #e6bfa2;
+    --zone-hot: #e2a6ae;
+    --zone-bullseye: #e7d48f;
+    --zone-ink: #1e2337;
+
+    --mark-cold: #8aa8d0;
+    --mark-cool: #86c4ab;
+    --mark-warm: #e0a881;
+    --mark-hot: #dc8d97;
+    --mark-bullseye: #e3c768;
+
+    --focus-ring: #7f9fd1;
+    --scrim: rgb(10 12 24 / 0.6);
+    --scrim-on-paper: color-mix(in srgb, rgb(10 12 24) 60%, var(--paper));
+  }
+}

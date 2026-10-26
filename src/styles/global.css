@@ -84,6 +84,15 @@ kbd {
   overflow-x: clip;
 }
 
+/* A screen's holder (see Entrance in App.tsx) takes no space of its own. */
+.entrance {
+  display: contents;
+}
+
+.app[aria-busy='true'] {
+  cursor: progress;
+}
+
 .screen {
   width: 100%;
   max-width: var(--column);

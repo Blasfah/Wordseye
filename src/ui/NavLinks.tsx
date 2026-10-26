@@ -1,5 +1,5 @@
-import { hrefFor, type Route } from './route';
-import { route } from './state';
+import type { Route } from './route';
+import { hrefTo, route } from './state';
 
 /**
  * Quiet links to the other places in the game, depending on where you are.
@@ -30,7 +30,7 @@ export function NavLinks() {
   return (
     <nav class="nav-links" aria-label="More puzzles">
       {links.map(([target, label]) => (
-        <a key={label} class="nav-link" href={hrefFor(target, location.pathname)}>
+        <a key={label} class="nav-link" href={hrefTo(target)}>
           {label}
         </a>
       ))}

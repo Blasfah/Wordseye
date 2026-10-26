@@ -4,10 +4,9 @@ import { addMonths, compareMonths, monthDays, monthOf, type Month } from '../gam
 import { dateForDay, dayForDate } from '../game/daily';
 import { gameTier, type GameRecord } from '../game/stats';
 import { NavLinks } from './NavLinks';
-import { Stats } from './Stats';
+import { StatsBoard } from './Stats';
 import { formatPuzzleDate } from './helpers';
-import { hrefFor } from './route';
-import { history, today } from './state';
+import { history, hrefTo, today } from './state';
 
 const monthFormat = new Intl.DateTimeFormat('en-GB', { month: 'long', timeZone: 'UTC' });
 const monthName = ({ year, month }: Month) =>
@@ -110,15 +109,11 @@ export function Calendar() {
         </p>
       </div>
 
-      <a class="button button-primary" href={hrefFor({ view: 'today' }, location.pathname)}>
+      <a class="button button-primary" href={hrefTo({ view: 'today' })}>
         {todayPlayed ? "Back to today's puzzles" : "Play today's puzzle"}
       </a>
 
-      <div class="calendar-stats">
-        {LEVELS.map(({ id }) => (
-          <Stats key={id} level={id} />
-        ))}
-      </div>
+      <StatsBoard />
       <NavLinks />
     </section>
   );
@@ -152,7 +147,7 @@ function DayCell({
     return `${label} ${record ? `${record.score} points` : 'not played'}`;
   }).join(', ');
   const label = `Puzzle #${day}, ${formatPuzzleDate(date)}${isToday ? ', today' : ''}: ${state}`;
-  const href = hrefFor(isToday ? { view: 'today' } : { view: 'day', day }, location.pathname);
+  const href = hrefTo(isToday ? { view: 'today' } : { view: 'day', day });
   return (
     <li class="calendar-day" data-today={isToday || undefined}>
       <a href={href} aria-label={label}>

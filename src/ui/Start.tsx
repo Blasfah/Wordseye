@@ -6,7 +6,7 @@ import { LEVEL_BLURB, LevelPicker } from './LevelPicker';
 import { NavLinks } from './NavLinks';
 import { Stats } from './Stats';
 import { focusKeyboardProxy, formatPuzzleDate } from './helpers';
-import { game, isPractice, start } from './state';
+import { game, isPractice, level, start } from './state';
 
 export function Start() {
   const button = useRef<HTMLButtonElement>(null);
@@ -18,7 +18,8 @@ export function Start() {
   };
 
   const number = game.value.puzzleNumber;
-  const { gameSeconds, extraHints } = levelInfo(game.value.level);
+  // The level just picked, so the text changes with the picker straight away.
+  const { gameSeconds, extraHints } = levelInfo(level.value);
   return (
     <section class="screen start" aria-labelledby="start-title">
       <h1 id="start-title" class="wordmark">
@@ -31,7 +32,7 @@ export function Start() {
       </p>
 
       <LevelPicker />
-      <p class="level-blurb quiet small">{LEVEL_BLURB[game.value.level]}</p>
+      <p class="level-blurb quiet small">{LEVEL_BLURB[level.value]}</p>
 
       <div class="howto">
         <p>
@@ -60,7 +61,7 @@ export function Start() {
         time with <kbd>Esc</kbd>.
       </p>
 
-      <Stats level={game.value.level} />
+      <Stats level={level.value} />
       <NavLinks />
     </section>
   );

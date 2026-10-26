@@ -40,7 +40,7 @@ import { pickPracticePuzzle } from '../game/practice';
 import { scoreGame } from '../game/scoring';
 import { addRecord, toRecord, type GameRecord } from '../game/stats';
 import type { GameState, GameStatus, Puzzle } from '../game/types';
-import { hrefFor, readRoute, type Route } from './route';
+import { appRoot, hrefFor, matchRoute, readRoute, type Route } from './route';
 
 export type LoadStatus =
   { kind: 'loading' } | { kind: 'ready' } | { kind: 'error'; message: string };
@@ -53,13 +53,17 @@ export type Feedback =
 
 const currentDay = () => dayNumber(new Date(), CONFIG.timeZone, CONFIG.firstPuzzleDate);
 
-export const route = signal<Route>(readRoute(location.search));
-/** The level in view: from the URL, else the last one picked here, else the default. */
-export const level = signal<LevelId>(
-  ('level' in route.peek() && (route.peek() as { level?: LevelId }).level) ||
-    loadLevel() ||
-    CONFIG.defaultLevel,
-);
+/** The game's folder, which every view's address hangs off. */
+const root = appRoot(location.pathname);
+export const hrefTo = (target: Route) => hrefFor(target, root);
+
+/** A route's level: its own, else the last one picked here, else the default. */
+const levelFor = (target: Route): LevelId =>
+  ('level' in target && target.level) || loadLevel() || CONFIG.defaultLevel;
+
+export const route = signal<Route>(readRoute(location.pathname, location.search));
+/** The level in view, which also sets the page's look (see App). */
+export const level = signal<LevelId>(levelFor(route.peek()));
 /** Today's puzzle number. */
 export const today = signal(currentDay());
 export const loadStatus = signal<LoadStatus>({ kind: 'loading' });
@@ -72,6 +76,13 @@ export const savedGames = signal<ReadonlyMap<string, GameState>>(new Map());
 export const history = signal<GameRecord[]>([]);
 export const now = signal(Date.now());
 export const feedback = signal<Feedback | null>(null);
+/** The next view is loading behind the one on screen. */
+export const pending = signal(false);
+/**
+ * Whether the next screen to appear skips its entrance: switching levels
+ * changes the scenery around one screen rather than moving to a new one.
+ */
+export const stillEntrance = signal(false);
 
 /** Practice replays past puzzles back to back, without saving or counting them. */
 export const isPractice = computed(() => route.value.view === 'practice');
@@ -103,46 +114,105 @@ export const dayProgress = computed(() => {
 
 const nextFeedbackId = () => (feedback.peek()?.id ?? 0) + 1;
 
-/** Loads whatever the URL asks for. */
-export function load(): Promise<void> {
+/**
+ * Loads a view (the one in view, unless told otherwise). The route only
+ * changes once its puzzle is in, together with everything else on screen.
+ */
+export function load(target: Route = route.peek()): Promise<void> {
   // A tab left open overnight should move on to the new day.
   today.value = currentDay();
-  const current = route.peek();
-  if (current.view === 'day' && current.day >= today.peek()) {
+  if (target.view === 'day' && target.day >= today.peek()) {
     // Today's or a future puzzle: show today's, at its own address.
-    route.value = { view: 'today', level: current.level };
-    window.history.replaceState(null, '', hrefFor(route.value, location.pathname));
+    target = { view: 'today', level: target.level };
   }
-  const target = route.peek();
+  // Tidy the address too (older ?level=hard ones, or the day that became today).
+  if (location.pathname + location.search !== hrefTo(target)) {
+    window.history.replaceState(null, '', hrefTo(target));
+  }
   switch (target.view) {
     case 'practice':
-      return loadPractice();
+      return loadPractice(target);
     case 'calendar':
-      return withLoading(async () => showCalendar());
+      return withLoading(async () => showCalendar(target));
     case 'day':
-      return loadDay(target.day);
+      return loadDay(target, target.day);
     case 'today':
-      return loadDay(today.peek());
+      return loadDay(target, today.peek());
   }
 }
 
-/** Switches the puzzle in view to another level, and remembers the choice. */
+/**
+ * Switches the puzzle in view to another level, and remembers the choice. The
+ * screen stays put while the other level's words load, then changes in place.
+ */
 export function chooseLevel(next: LevelId): Promise<void> {
   saveLevel(next);
-  level.value = next;
+  batch(() => {
+    level.value = next;
+    stillEntrance.value = true;
+  });
   const current = route.peek();
-  if (current.view !== 'calendar') {
-    route.value = { ...current, level: next };
-    window.history.replaceState(null, '', hrefFor(route.value, location.pathname));
-  }
-  return load();
+  return load(current.view === 'calendar' ? current : { ...current, level: next });
 }
 
-async function withLoading(task: () => Promise<void>): Promise<void> {
-  loadStatus.value = { kind: 'loading' };
+/** Moves to another view, as a link would, without reloading the page. */
+export async function navigate(target: Route): Promise<void> {
+  window.history.pushState(null, '', hrefTo(target));
+  await show(target);
+}
+
+/** Shows a view the address already points at (a link, or the back button). */
+async function show(target: Route): Promise<void> {
+  stillEntrance.value = false;
+  await load(target);
+  window.scrollTo(0, 0);
+}
+
+/**
+ * Follows the game's own links in place, and the back and forward buttons.
+ * Returns a function that stops.
+ */
+export function connectNavigation(): () => void {
+  const onClick = (event: MouseEvent) => {
+    if (event.defaultPrevented || event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const link = (event.target as Element | null)?.closest?.('a[href]');
+    if (!(link instanceof HTMLAnchorElement) || link.target || link.hasAttribute('download')) {
+      return;
+    }
+    const url = new URL(link.href);
+    if (url.origin !== location.origin || !url.pathname.startsWith(root)) return;
+    if (url.pathname.slice(root.length).includes('/')) return;
+    const target = matchRoute(url.pathname, url.search);
+    if (!target) return;
+    event.preventDefault();
+    void navigate(target);
+  };
+  const onPopState = () => void show(readRoute(location.pathname, location.search));
+  document.addEventListener('click', onClick);
+  window.addEventListener('popstate', onPopState);
+  return () => {
+    document.removeEventListener('click', onClick);
+    window.removeEventListener('popstate', onPopState);
+  };
+}
+
+let latestLoad = 0;
+
+/**
+ * Runs a load. The screen in view stays up meanwhile (only the very first load
+ * shows "Fetching"), and a load overtaken by a newer one is dropped: `stale`
+ * tells the task so before it changes anything.
+ */
+async function withLoading(task: (stale: () => boolean) => Promise<void>): Promise<void> {
+  const id = ++latestLoad;
+  const stale = () => id !== latestLoad;
+  if (loadStatus.peek().kind !== 'ready') loadStatus.value = { kind: 'loading' };
+  pending.value = true;
   try {
-    await task();
+    await task(stale);
   } catch (error) {
+    if (stale()) return;
     if (error instanceof NewerDataError && !sessionStorage.getItem('wordseye-reloaded')) {
       // This copy of the game is older than the puzzles on the server: fetch the new one.
       sessionStorage.setItem('wordseye-reloaded', '1');
@@ -151,6 +221,8 @@ async function withLoading(task: () => Promise<void>): Promise<void> {
     }
     const message = error instanceof Error ? error.message : String(error);
     loadStatus.value = { kind: 'error', message };
+  } finally {
+    if (!stale()) pending.value = false;
   }
 }
 
@@ -192,29 +264,32 @@ function settleSavedGames(): { games: Map<string, GameState>; records: GameRecor
       records = addRecord(records, toRecord(synced));
     }
   }
-  // Also rewrites records saved before levels existed, now marked as medium.
   saveHistory(records);
   return { games, records };
 }
 
-function showCalendar(): void {
+function showCalendar(target: Route): void {
   const { games, records } = settleSavedGames();
   batch(() => {
+    route.value = target;
     history.value = records;
     savedGames.value = games;
     loadStatus.value = { kind: 'ready' };
   });
 }
 
-/** Loads a daily puzzle, today's or a past one, on the current level. */
-function loadDay(day: number): Promise<void> {
-  return withLoading(async () => {
-    const onLevel = level.peek();
+/** Loads a daily puzzle, today's or a past one, on the route's level. */
+function loadDay(target: Route, day: number): Promise<void> {
+  return withLoading(async (stale) => {
+    const onLevel = levelFor(target);
     const { words, index } = await loadBasics();
     const dayPuzzle = await loadPuzzle(dayIds(index, day, onLevel), day, onLevel);
+    if (stale()) return;
     const { games, records } = settleSavedGames();
 
     batch(() => {
+      route.value = target;
+      level.value = onLevel;
       vocabulary.value = words;
       puzzleIndex.value = index;
       puzzle.value = dayPuzzle;
@@ -232,9 +307,9 @@ function loadDay(day: number): Promise<void> {
  * Loads a random past puzzle on the current level, one you haven't had in
  * practice yet (remembered across reloads), never the one just shown.
  */
-function loadPractice(): Promise<void> {
-  return withLoading(async () => {
-    const onLevel = level.peek();
+function loadPractice(target: Route = route.peek()): Promise<void> {
+  return withLoading(async (stale) => {
+    const onLevel = levelFor(target);
     const { words, index } = await loadBasics();
     // Only puzzles that are already out (on day 1, that's today's).
     const pastDays = Math.max(1, today.peek() - 1);
@@ -242,8 +317,11 @@ function loadPractice(): Promise<void> {
     const pick = pickPracticePuzzle(pastDays, loadPracticePlayed(), avoid);
     savePracticePlayed(pick.played);
     const next = await loadPuzzle(dayIds(index, pick.index, onLevel), pick.index, onLevel);
+    if (stale()) return;
 
     batch(() => {
+      route.value = target;
+      level.value = onLevel;
       vocabulary.value = words;
       puzzleIndex.value = index;
       puzzle.value = next;
@@ -262,7 +340,10 @@ export async function playAnother(): Promise<void> {
 }
 
 export function start(): void {
+  // Another level's puzzle is still on its way in.
+  if (game.peek().level !== level.peek()) return;
   const t = Date.now();
+  stillEntrance.value = false;
   saveLevel(game.value.level);
   batch(() => {
     now.value = t;
@@ -326,9 +407,26 @@ export function revealExtraHint(): void {
   });
 }
 
-/** Persistence, stats and the game clock. Returns a function that stops them. */
+/** Persistence, stats, the game clock and the page's look. Returns a function that stops them. */
 export function connectEffects(): () => void {
   const stops = [
+    // The level sets the page's colours (see tokens.css); the calendar covers every level.
+    effect(() => {
+      const look = route.value.view === 'calendar' ? null : level.value;
+      const root = document.documentElement;
+      if (look === (root.dataset.level ?? null)) return;
+      if (look) root.dataset.level = look;
+      else delete root.dataset.level;
+      // The browser's own bar follows once the colours have settled.
+      setTimeout(() => {
+        const paper = getComputedStyle(root).getPropertyValue('--paper').trim();
+        if (!paper) return;
+        for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
+          meta.setAttribute('content', paper);
+        }
+      }, 1000);
+    }),
+
     effect(() => {
       const state = game.value;
       // A puzzle that was only opened, never started, isn't worth remembering.

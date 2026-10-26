@@ -1,47 +1,48 @@
 import { describe, expect, it } from 'vitest';
-import { hrefFor, readRoute, type Route } from './route';
+import { appRoot, hrefFor, matchRoute, readRoute, type Route } from './route';
 
-describe('readRoute', () => {
-  it('reads each view from the query string', () => {
-    expect(readRoute('')).toEqual({ view: 'today' });
-    expect(readRoute('?practice')).toEqual({ view: 'practice' });
-    expect(readRoute('?calendar')).toEqual({ view: 'calendar' });
-    expect(readRoute('?day=12')).toEqual({ view: 'day', day: 12 });
+describe('routes', () => {
+  const root = '/Wordseye/';
+  const cases: [string, Route][] = [
+    ['', { view: 'today' }],
+    ['hard', { view: 'today', level: 'hard' }],
+    ['12', { view: 'day', day: 12 }],
+    ['12-easy', { view: 'day', day: 12, level: 'easy' }],
+    ['calendar', { view: 'calendar' }],
+    ['practice', { view: 'practice' }],
+    ['practice-medium', { view: 'practice', level: 'medium' }],
+  ];
+
+  it.each(cases)('reads and writes "%s"', (segment, route) => {
+    expect(readRoute(root + segment)).toEqual(route);
+    expect(hrefFor(route, root)).toBe(root + segment);
   });
 
-  it('falls back to today for a bad day number', () => {
+  it('still reads the old ?query addresses', () => {
+    expect(readRoute(root, '?day=12&level=easy')).toEqual({ view: 'day', day: 12, level: 'easy' });
+    expect(readRoute(root, '?calendar')).toEqual({ view: 'calendar' });
+    expect(readRoute(root, '?level=hard')).toEqual({ view: 'today', level: 'hard' });
+    expect(readRoute(root, '?practice')).toEqual({ view: 'practice' });
+    expect(readRoute(root, '?level=extreme')).toEqual({ view: 'today' });
     for (const search of ['?day=', '?day=0', '?day=-3', '?day=2.5', '?day=abc']) {
-      expect(readRoute(search), search).toEqual({ view: 'today' });
+      expect(readRoute(root, search), search).toEqual({ view: 'today' });
     }
   });
-});
 
-describe('hrefFor', () => {
-  it('builds links that read back as the same route', () => {
-    const routes: Route[] = [
-      { view: 'today' },
-      { view: 'day', day: 7 },
-      { view: 'calendar' },
-      { view: 'practice' },
-    ];
-    for (const route of routes) {
-      const href = hrefFor(route, '/wordseye/');
-      expect(href.startsWith('/wordseye/')).toBe(true);
-      expect(readRoute(href.slice('/wordseye/'.length))).toEqual(route);
-    }
-  });
-});
-
-describe('levels in the address', () => {
-  it('reads and writes the level', () => {
-    expect(readRoute('?level=hard')).toEqual({ view: 'today', level: 'hard' });
-    expect(readRoute('?day=4&level=easy')).toEqual({ view: 'day', day: 4, level: 'easy' });
-    expect(readRoute('?practice&level=medium')).toEqual({ view: 'practice', level: 'medium' });
-    expect(hrefFor({ view: 'day', day: 4, level: 'easy' }, '/w/')).toBe('/w/?day=4&level=easy');
-    expect(hrefFor({ view: 'today', level: 'hard' }, '/w/')).toBe('/w/?level=hard');
+  it("knows what isn't one of its addresses", () => {
+    expect(matchRoute(`${root}favicon.svg`)).toBeNull();
+    expect(matchRoute(`${root}12-extreme`)).toBeNull();
+    expect(matchRoute(`${root}0`)).toBeNull();
+    expect(readRoute(`${root}nonsense`)).toEqual({ view: 'today' });
   });
 
-  it('ignores an unknown level', () => {
-    expect(readRoute('?level=extreme')).toEqual({ view: 'today' });
+  it("finds the game's folder from any of its views", () => {
+    expect(appRoot('/Wordseye/')).toBe('/Wordseye/');
+    expect(appRoot('/Wordseye/hard')).toBe('/Wordseye/');
+    expect(appRoot('/Wordseye/12-easy')).toBe('/Wordseye/');
+    expect(appRoot('/Wordseye/index.html')).toBe('/Wordseye/');
+    expect(appRoot('/Wordseye')).toBe('/Wordseye/');
+    expect(appRoot('/')).toBe('/');
+    expect(appRoot('/calendar')).toBe('/');
   });
 });

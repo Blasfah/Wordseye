@@ -479,8 +479,121 @@
   background: var(--zone-mark);
 }
 
-.calendar-stats .stats {
-  margin-top: 2.25rem;
+/* Every level's stats, as rows of a board. */
+.stats-board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 2.5rem;
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 0.45rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-table thead th {
+  padding: 0 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.stats-table tbody th,
+.stats-table tbody td {
+  padding: 0.75rem 0.25rem;
+  background: var(--paper-deep);
+}
+
+.stats-table tbody th {
+  padding-left: 1.1rem;
+  border-radius: var(--radius-soft) 0 0 var(--radius-soft);
+  text-align: left;
+}
+
+.stats-table tbody td {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.stats-table tbody td:last-child {
+  padding-right: 1rem;
+  border-radius: 0 var(--radius-soft) var(--radius-soft) 0;
+}
+
+.stats-table tr[data-level='easy'] {
+  --level-mark: var(--mark-cool);
+}
+.stats-table tr[data-level='medium'] {
+  --level-mark: var(--mark-warm);
+}
+.stats-table tr[data-level='hard'] {
+  --level-mark: var(--mark-hot);
+}
+
+/* Each level's name with a pip, warming up from Easy to Hard. */
+.stats-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.0625rem;
+}
+
+.stats-level::before {
+  content: '';
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--level-mark);
+}
+
+.stats-table tr[data-empty] td {
+  color: var(--ink-soft);
+}
+
+.stats-note {
+  text-wrap: balance;
+}
+
+/* How often you hit the bullseye, as a little bar under the number. */
+.stats-meter {
+  display: block;
+  width: 2.75rem;
+  height: 0.25rem;
+  margin: 0.3rem auto 0;
+  border-radius: var(--radius-pill);
+  background: var(--paper-deeper);
+  overflow: hidden;
+}
+
+.stats-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--mark-bullseye);
+}
+
+@media (max-width: 23rem) {
+  .stats-table thead th {
+    font-size: 0.75rem;
+  }
+
+  .stats-table tbody th {
+    padding-left: 0.8rem;
+  }
+
+  .stats-level::before {
+    display: none;
+  }
 }
 
 /* ---------------------------------------------------------------- links */

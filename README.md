@@ -23,7 +23,10 @@ npm run format       # Prettier
 
 `dist/` is plain static files with relative paths: upload it to any static host or subfolder.
 The generated puzzles are already in `public/data/`, so none of the data steps below are needed
-just to play or deploy.
+just to play or deploy. Each view has its own address (below), so the build also writes copies
+of the page: `calendar.html`, `easy.html` and so on for hosts that serve `./calendar` from
+`calendar.html` (GitHub Pages does), and `404.html` for the rest, which hosts serve for
+addresses they don't have.
 
 ### Deploying (GitHub Pages)
 
@@ -33,14 +36,16 @@ Actions**. The site then lives at `https://<your-user>.github.io/<repo-name>/`.
 
 ### Addresses
 
-| URL                  | Shows                                                               |
-| -------------------- | ------------------------------------------------------------------- |
-| `./`                 | today's puzzle, on the level last played here (Easy for newcomers)  |
-| `?level=hard`        | today's puzzle on a given level                                     |
-| `?day=12&level=easy` | puzzle #12 (today's or a future day falls back to today's)          |
-| `?calendar`          | every past day, with a dot per level coloured by how you did        |
-| `?practice`          | past puzzles back to back, on the picked level, never saved/counted |
+| URL          | Shows                                                               |
+| ------------ | ------------------------------------------------------------------- |
+| `./`         | today's puzzle, on the level last played here (Easy for newcomers)  |
+| `./hard`     | today's puzzle on a given level                                     |
+| `./12-easy`  | puzzle #12 (`./12` on your level; today or later shows today's)     |
+| `./calendar` | every past day, with a dot per level coloured by how you did        |
+| `./practice` | past puzzles back to back, on the picked level, never saved/counted |
 
+The game follows its own links without reloading the page, and the back button works as usual.
+Older addresses (`?day=12&level=easy`, `?calendar`) still work and are tidied to the new ones.
 Practice is meant for testing: it's linked only in development builds, though the URL works
 everywhere. Each practice game is a past day you haven't had in practice yet (remembered in
 localStorage), and **Play another** on its results screen has focus, so Enter starts the next.
@@ -196,17 +201,20 @@ Colours, fonts, radii and motion timings are CSS variables in
 
 - **Levels:** each day has an Easy, a Medium and a Hard puzzle with different secret words. The
   start and results screens let you switch, show how you did on each, and finishing a level
-  suggests the next one up.
+  suggests the next one up. Switching changes the screen in place, without its entrance
+  animation, and the page fades to the level's colour, a step deeper each time: Easy cream,
+  Medium sand, Hard dusty red (navy, plum and maroon in dark mode; see `tokens.css`).
 - **Extra hints:** Easy gets 3 and Medium 1, to spend over the whole game. Each reveals the
   round's next extra word and its rank, shown among your guesses. Hint words don't count towards
   your score, and you can't guess them for credit.
 - **Persistence:** every daily game, today's or from the calendar, on any level, is saved to
   localStorage after each move. The clock is wall-clock based, so a reload restores your guesses
   but doesn't pause time. A finished game shows its results again. Stats (played, average, best,
-  bullseye rate) are kept per level and include calendar games. Games saved before levels existed
-  count as Medium. If storage is blocked, the game still plays; it just doesn't remember.
+  bullseye rate) are kept per level and include calendar games. If storage is blocked, the game
+  still plays; it just doesn't remember.
 - **Calendar:** each day shows a dot per level, coloured by the zone matching your average points
-  per round. Days before puzzle #1 and after today can't be opened.
+  per round. Days before puzzle #1 and after today can't be opened. Below it, one board shows
+  your stats on every level.
 - **Guess rules:** input is trimmed, lowercased and stripped of accents. Words outside the
   vocabulary don't count. The hint and its variants are rejected (Porter stemming plus a few
   derivational endings: value / values / valued / valuable), and so are repeats within a round.

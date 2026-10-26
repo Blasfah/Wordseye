@@ -1,6 +1,6 @@
 import { LEVELS, type LevelId } from '../config';
 import { levelInfo } from '../game/levels';
-import { chooseLevel, dayProgress, game } from './state';
+import { chooseLevel, dayProgress, level } from './state';
 
 /** What each level is like, in one line. */
 export const LEVEL_BLURB: Record<LevelId, string> = {
@@ -18,7 +18,8 @@ export function levelSummary(id: LevelId): string {
 
 /** The three levels of the puzzle in view, with how far you got on each. */
 export function LevelPicker() {
-  const current = game.value.level;
+  // The level just picked, while its puzzle may still be loading.
+  const current = level.value;
   const progress = dayProgress.value;
   return (
     <div class="level-picker" role="group" aria-label="Difficulty">

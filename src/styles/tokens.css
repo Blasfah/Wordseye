@@ -1,5 +1,40 @@
 /* Design tokens. Everything visual hangs off these variables. */
 
+/*
+ * The page's own colours are registered, so switching levels fades them (see
+ * the level palettes below) instead of snapping.
+ */
+@property --paper {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #fbf7f2;
+}
+@property --paper-deep {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #f3ece3;
+}
+@property --paper-deeper {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ebe2d6;
+}
+@property --ink {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #3a3a3f;
+}
+@property --ink-soft {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #6c6a72;
+}
+@property --ink-faint {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #c9c1b6;
+}
+
 :root {
   color-scheme: light;
 
@@ -49,6 +84,41 @@
   --duration-quick: 160ms;
   --duration-gentle: 380ms;
   --duration-slow: 700ms;
+  /* Switching levels: the page's colours fade to the new level's. */
+  --duration-scene: 900ms;
+
+  transition:
+    --paper var(--duration-scene) ease,
+    --paper-deep var(--duration-scene) ease,
+    --paper-deeper var(--duration-scene) ease,
+    --ink var(--duration-scene) ease,
+    --ink-soft var(--duration-scene) ease,
+    --ink-faint var(--duration-scene) ease;
+}
+
+/* ---------------------------------------------------------------- levels */
+
+/* Each level is one solid colour, a step deeper each time: Medium sand, Hard dusty red. */
+:root[data-level='medium'] {
+  --paper: #f3e2d1;
+  --paper-deep: #ead3be;
+  --paper-deeper: #e0c4ac;
+  --ink-soft: #6b5c53;
+  --ink-faint: #cbb099;
+  --scrim: rgb(232 211 190 / 0.82);
+  --scrim-on-paper: color-mix(in srgb, rgb(232 211 190) 82%, var(--paper));
+}
+
+:root[data-level='hard'] {
+  --paper: #e8bfb4;
+  --paper-deep: #ddac9f;
+  --paper-deeper: #d1998b;
+  --ink: #3b2426;
+  --ink-soft: #66403f;
+  --ink-faint: #bf8174;
+  --ink-inverse: #e8bfb4;
+  --scrim: rgb(219 170 157 / 0.82);
+  --scrim-on-paper: color-mix(in srgb, rgb(219 170 157) 82%, var(--paper));
 }
 
 @media (prefers-color-scheme: dark) {
@@ -80,5 +150,29 @@
     --focus-ring: #7f9fd1;
     --scrim: rgb(10 12 24 / 0.6);
     --scrim-on-paper: color-mix(in srgb, rgb(10 12 24) 60%, var(--paper));
+  }
+
+  /* Navy, then plum, then maroon. */
+  :root[data-level='medium'] {
+    --paper: #261f35;
+    --paper-deep: #30283f;
+    --paper-deeper: #3a314b;
+    --ink-soft: #b0a8bd;
+    --ink-faint: #4f4562;
+    --ink-inverse: #261f35;
+    --scrim: rgb(16 10 24 / 0.6);
+    --scrim-on-paper: color-mix(in srgb, rgb(16 10 24) 60%, var(--paper));
+  }
+
+  :root[data-level='hard'] {
+    --paper: #2d161c;
+    --paper-deep: #3c1e26;
+    --paper-deeper: #4a2530;
+    --ink: #f1e3dd;
+    --ink-soft: #c2a4a8;
+    --ink-faint: #64343f;
+    --ink-inverse: #2d161c;
+    --scrim: rgb(24 6 10 / 0.6);
+    --scrim-on-paper: color-mix(in srgb, rgb(24 6 10) 60%, var(--paper));
   }
 }

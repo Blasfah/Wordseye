@@ -1,7 +1,7 @@
 /**
  * Builds all puzzle data from pretrained word vectors.
  *
- *   npm run data:build                      # scripts/.cache/glove.6B.300d.txt
+ *   npm run data:build                      # scripts/.cache/blend.vec (npm run data:vectors)
  *   npm run data:build -- --vectors my.vec  # any word2vec-style text file
  *
  * Targets come from scripts/data/targets.txt (hand-picked) and targets-auto.txt
@@ -17,7 +17,8 @@
  *   vocab.<hash>.txt     every guessable word, one per line
  *   index.<hash>.json    each level's schedule, as word ids
  *   words/<id>.json      one per target: first hint per level, extra hints, ranked neighbors
- * and scripts/output/review.md for checking quality.
+ * and scripts/output/review.md for checking quality. Neighbors are ranked as
+ * groups of forms (see lib/forms.ts): "bee" and "bees" share one rank.
  */
 import { existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -27,8 +28,8 @@ import { parseArgs } from 'node:util';
 import { gzipSync } from 'node:zlib';
 import { CONFIG, LEVELS, RANKED_NEIGHBORS, type LevelId } from '../src/config';
 import { dateForDay } from '../src/game/daily';
+import { groupForms, rankForms } from './lib/forms';
 import { chooseAllHints, isUsableHint } from './lib/hints';
-import { nearest } from './lib/parallel';
 import { DATA_OUT_DIR, DEFAULT_VECTORS_PATH, REVIEW_PATH, SCRIPTS_DIR } from './lib/paths';
 import { checkSchedules, extendSchedules, type Schedulable, type Schedules } from './lib/schedule';
 import {
@@ -39,7 +40,7 @@ import {
   type Vocabulary,
 } from './lib/vocab';
 
-const FORMAT_VERSION = 3;
+const FORMAT_VERSION = 4;
 const LEVEL_IDS = LEVELS.map((level) => level.id);
 const WORDS_DIR = join(DATA_OUT_DIR, 'words');
 const scheduleFile = (level: LevelId) => join(SCRIPTS_DIR, 'data', `schedule-${level}.txt`);
@@ -149,22 +150,27 @@ async function main(): Promise<void> {
   const words = [...new Set([...scheduled, ...listed.filter(usable)])];
 
   // Neighbors and hints for all of them, spread over every core.
-  const near = await nearest(
+  const forms = groupForms(vocab);
+  const ranked = await rankForms(
     vocab,
+    forms,
     words.map((w) => vocab.index.get(w)!),
-    RANKED_NEIGHBORS - 1,
+    RANKED_NEIGHBORS,
   );
-  const neighborLists = words.map((w, i) => [
-    w,
-    ...Array.from(near[i].indices, (j) => vocab.words[j]),
-  ]);
+  // Each rank's main form: what hints are picked from and lists show.
+  const neighborLists = ranked.map(({ groups }) => groups.map((group) => vocab.words[group[0]]));
   const hints = await chooseAllHints(vocab, neighborLists, lists.hintAvoid);
-  const tightness = near.map(({ sims }) => sims.slice(0, 10).reduce((a, b) => a + b, 0) / 10);
+  const tightness = ranked.map(({ sims }) => sims.slice(1, 11).reduce((a, b) => a + b, 0) / 10);
   const easiness = easinessScores(vocab, words, tightness, curated);
   const byWord = new Map(
     words.map((w, i) => [
       w,
-      { hints: hints[i], neighbors: neighborLists[i], easiness: easiness[i] },
+      {
+        hints: hints[i],
+        neighbors: neighborLists[i],
+        entries: ranked[i].groups.map((group) => group.map((j) => vocab.words[j]).join(' ')),
+        easiness: easiness[i],
+      },
     ]),
   );
 
@@ -215,14 +221,14 @@ async function main(): Promise<void> {
 
   let gzipBytes = 0;
   for (const word of used) {
-    const { hints: h, neighbors } = byWord.get(word)!;
+    const { hints: h, entries } = byWord.get(word)!;
     const json = JSON.stringify({
       v: FORMAT_VERSION,
       hints: Object.fromEntries(
         LEVEL_IDS.filter((level) => h.levels[level]).map((level) => [level, h.levels[level]!.word]),
       ),
       extras: h.extras.map((e) => e.word),
-      neighbors,
+      neighbors: entries,
     });
     await writeFile(join(WORDS_DIR, `${wordId(word)}.json`), json);
     gzipBytes += gzipSync(json).length;
@@ -239,7 +245,7 @@ async function main(): Promise<void> {
   const lastDate = dateForDay(totalDays, CONFIG.firstPuzzleDate);
   const fewExtras = [...used].filter((w) => byWord.get(w)!.hints.extras.length < 3);
   const summary = [
-    `Vocabulary: ${vocab.words.length.toLocaleString()} words (${kb(gzipSync(vocabText).length)} gzipped)`,
+    `Vocabulary: ${vocab.words.length.toLocaleString()} words (${kb(gzipSync(vocabText).length)} gzipped), ${forms.members.size.toLocaleString()} with other forms sharing their rank`,
     `Targets: ${used.size} in use (${listed.length} listed)`,
     `Days: ${totalDays} per level, ${CONFIG.firstPuzzleDate} to ${lastDate} (new this build: ${LEVEL_IDS.map((l) => `${l} ${newDays[l]}`).join(', ')})`,
     ...LEVEL_IDS.map(

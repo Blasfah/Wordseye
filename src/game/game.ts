@@ -117,18 +117,32 @@ export function submitGuess(
   const index = state.current;
   const round = state.rounds[index];
   const puzzleRound = puzzle.rounds[index];
-  const reason = checkGuess(word, {
-    vocabulary,
-    hint: puzzleRound.hint,
-    previous: round.guesses.map((g) => g.word),
-    revealed: revealedHints(round, puzzleRound.extras).map((h) => h.word),
-  });
+  const revealed = revealedHints(round, puzzleRound.extras);
+  const rank = rankOf(puzzleRound, word);
+  // Another form of a word already on the board ("bees" after "bee") shares its rank.
+  const sameRank = (other: { rank: number | null }) => rank !== null && other.rank === rank;
+  const reason =
+    checkGuess(word, {
+      vocabulary,
+      hint: puzzleRound.hint,
+      previous: round.guesses.map((g) => g.word),
+      revealed: revealed.map((h) => h.word),
+    }) ??
+    (sameRank({ rank: rankOf(puzzleRound, puzzleRound.hint) })
+      ? 'hint'
+      : revealed.some(sameRank)
+        ? 'revealed'
+        : round.guesses.some(sameRank)
+          ? 'duplicate'
+          : null);
   if (reason) {
-    const earlier = reason === 'duplicate' ? round.guesses.find((g) => g.word === word) : undefined;
+    const earlier =
+      reason === 'duplicate'
+        ? round.guesses.find((g) => g.word === word || sameRank(g))
+        : undefined;
     return { state, outcome: { kind: 'rejected', word, reason, earlier } };
   }
 
-  const rank = rankOf(puzzleRound, word);
   const guess: Guess = {
     word,
     rank,

@@ -27,9 +27,6 @@ function write(name: string, value: unknown): void {
   }
 }
 
-/** Games and records from before levels existed were all played on medium. */
-const LEVEL_BEFORE_LEVELS: LevelId = 'medium';
-
 const zoneIds: ReadonlySet<unknown> = new Set(ZONES.map((z) => z.id));
 const roundStatuses: ReadonlySet<unknown> = new Set([
   'upcoming',
@@ -43,8 +40,6 @@ const gameStatuses: ReadonlySet<unknown> = new Set(['ready', 'playing', 'finishe
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 const isNumberOrNull = (value: unknown) => value === null || typeof value === 'number';
-const isOptional = (value: unknown, check: (v: unknown) => boolean) =>
-  value === undefined || check(value);
 
 function isGuess(value: unknown): value is Guess {
   return (
@@ -62,18 +57,17 @@ function isRound(value: unknown): value is RoundState {
     roundStatuses.has(value.status) &&
     Array.isArray(value.guesses) &&
     value.guesses.every(isGuess) &&
-    isOptional(value.extraHints, Number.isInteger) &&
+    Number.isInteger(value.extraHints) &&
     isNumberOrNull(value.startMs) &&
     isNumberOrNull(value.endMs)
   );
 }
 
-/** A saved game, possibly from before levels and extra hints existed. */
 export function isGameState(value: unknown): value is GameState {
   return (
     isRecord(value) &&
     Number.isInteger(value.puzzleNumber) &&
-    isOptional(value.level, isLevelId) &&
+    isLevelId(value.level) &&
     gameStatuses.has(value.status) &&
     isNumberOrNull(value.startedAt) &&
     isNumberOrNull(value.endedMs) &&
@@ -86,20 +80,11 @@ export function isGameState(value: unknown): value is GameState {
   );
 }
 
-/** Fills in what older saved games lack. */
-export function upgradeGame(state: GameState): GameState {
-  return {
-    ...state,
-    level: state.level ?? LEVEL_BEFORE_LEVELS,
-    rounds: state.rounds.map((round) => ({ ...round, extraHints: round.extraHints ?? 0 })),
-  };
-}
-
 export function isGameRecord(value: unknown): value is GameRecord {
   return (
     isRecord(value) &&
     Number.isInteger(value.puzzleNumber) &&
-    isOptional(value.level, isLevelId) &&
+    isLevelId(value.level) &&
     typeof value.score === 'number' &&
     typeof value.bullseyes === 'number' &&
     typeof value.rounds === 'number' &&
@@ -115,10 +100,8 @@ export function loadGames(): Map<string, GameState> {
   const data = read('games');
   const games = new Map<string, GameState>();
   if (isRecord(data)) {
-    for (const value of Object.values(data)) {
-      if (!isGameState(value)) continue;
-      const game = upgradeGame(value);
-      games.set(gameKey(game.level, game.puzzleNumber), game);
+    for (const game of Object.values(data)) {
+      if (isGameState(game)) games.set(gameKey(game.level, game.puzzleNumber), game);
     }
   }
   return games;
@@ -136,10 +119,7 @@ export function saveGame(state: GameState): void {
 
 export function loadHistory(): GameRecord[] {
   const data = read('history');
-  if (!Array.isArray(data)) return [];
-  return data
-    .filter(isGameRecord)
-    .map((record) => ({ ...record, level: record.level ?? LEVEL_BEFORE_LEVELS }));
+  return Array.isArray(data) ? data.filter(isGameRecord) : [];
 }
 
 export function saveHistory(history: readonly GameRecord[]): void {

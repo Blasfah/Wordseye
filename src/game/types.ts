@@ -31,8 +31,13 @@ export interface RankedWord {
 export interface PuzzleRound {
   hint: string;
   target: string;
-  /** word → rank, where rank 1 is the target. Anything missing is cold. */
+  /**
+   * word → rank, where rank 1 is the target. Forms of one word share a rank
+   * ("bee", "bees"). Anything missing is cold.
+   */
   ranks: ReadonlyMap<string, number>;
+  /** The word shown for each rank, closest first: words[0] is the target. */
+  words: readonly string[];
   /** Extra hint words, in the order they're revealed. */
   extras: RankedWord[];
 }

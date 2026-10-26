@@ -54,6 +54,19 @@ describe('puzzle rounds', () => {
     expect(rankOf(round, 'furniture')).toBe(3);
     expect(rankOf(round, 'pizza')).toBeNull();
   });
+
+  it('gives every form of a word the same rank, and shows the first', () => {
+    const forms = createPuzzleRound('value', ['bee bees', 'honey', 'hive hives', 'wax']);
+    expect(forms.target).toBe('bee');
+    expect(rankOf(forms, 'bees')).toBe(1);
+    expect(rankOf(forms, 'hive')).toBe(3);
+    expect(rankOf(forms, 'hives')).toBe(3);
+    expect(topWords(forms, 3)).toEqual([
+      { word: 'bee', rank: 1 },
+      { word: 'honey', rank: 2 },
+      { word: 'hive', rank: 3 },
+    ]);
+  });
 });
 
 describe('rankBands', () => {

@@ -116,3 +116,8 @@ idiot
 sally
 oxford
 somerset
+
+# Unrelated senses that made misleading hints: news names ("fox", "otter"), plate tectonics
+cooper
+mantle
+newt

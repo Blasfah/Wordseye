@@ -1,6 +1,7 @@
 /**
- * Minimal, dependency-free reader for plain (non-zip64) zip archives:
- * just enough to pull one large deflated entry out as a stream.
+ * Minimal, dependency-free zip reader: just enough to pull one large deflated
+ * entry out as a stream. Entries over 4 GB (zip64 sizes) are fine; archives
+ * over 4 GB are not.
  */
 import { createReadStream } from 'node:fs';
 import { open } from 'node:fs/promises';
@@ -10,6 +11,8 @@ import { createInflateRaw } from 'node:zlib';
 const EOCD_SIG = 0x06054b50;
 const CENTRAL_SIG = 0x02014b50;
 const LOCAL_SIG = 0x04034b50;
+const ZIP64_EXTRA_ID = 0x0001;
+const ZIP64_MARKER = 0xffffffff;
 
 export interface ZipEntry {
   name: string;
@@ -51,18 +54,37 @@ export async function listZipEntries(zipPath: string): Promise<ZipEntry[]> {
       const nameLength = dir.readUInt16LE(p + 28);
       const extraLength = dir.readUInt16LE(p + 30);
       const commentLength = dir.readUInt16LE(p + 32);
-      entries.push({
+      const entry: ZipEntry = {
         method: dir.readUInt16LE(p + 10),
         compressedSize: dir.readUInt32LE(p + 20),
         size: dir.readUInt32LE(p + 24),
         localHeaderOffset: dir.readUInt32LE(p + 42),
         name: dir.toString('utf8', p + 46, p + 46 + nameLength),
-      });
+      };
+      readZip64Sizes(entry, dir.subarray(p + 46 + nameLength, p + 46 + nameLength + extraLength));
+      entries.push(entry);
       p += 46 + nameLength + extraLength + commentLength;
     }
     return entries;
   } finally {
     await file.close();
+  }
+}
+
+/**
+ * Fields too big for 32 bits are 0xffffffff in the directory, with the real
+ * values in a zip64 extra field, in this order, for just the fields that overflowed.
+ */
+function readZip64Sizes(entry: ZipEntry, extra: Buffer): void {
+  for (let q = 0; q + 4 <= extra.length; q += 4 + extra.readUInt16LE(q + 2)) {
+    if (extra.readUInt16LE(q) !== ZIP64_EXTRA_ID) continue;
+    let at = q + 4;
+    for (const field of ['size', 'compressedSize', 'localHeaderOffset'] as const) {
+      if (entry[field] !== ZIP64_MARKER) continue;
+      entry[field] = Number(extra.readBigUInt64LE(at));
+      at += 8;
+    }
+    return;
   }
 }
 

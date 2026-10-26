@@ -10,7 +10,8 @@ import {
   syncClock,
   timeLeftMs,
 } from './game';
-import { PUZZLE, VOCABULARY, at } from './testing';
+import { createPuzzleRound } from './puzzle';
+import { PUZZLE, VOCABULARY, at, neighborsFor } from './testing';
 import type { GameState, Guess } from './types';
 
 const input = { puzzle: PUZZLE, vocabulary: VOCABULARY };
@@ -107,6 +108,38 @@ describe('guessing', () => {
     let { state } = guess(started(), 'antique', 5); // bullseye, round 2 starts
     ({ state } = guess(state, 'pizza', 6));
     expect(state.rounds[1].guesses.map((g) => g.word)).toEqual(['pizza']);
+  });
+});
+
+describe('forms of a word', () => {
+  // British and American spellings are forms too, which word stems alone miss.
+  const round = createPuzzleRound(
+    'colour',
+    neighborsFor('paint', { 'paint paints': 1, 'brush brushes': 12, 'colour color': 30 }),
+  );
+  const puzzle = { ...PUZZLE, rounds: [round, ...PUZZLE.rounds.slice(1)] };
+  const vocabulary = new Set([...VOCABULARY, ...round.ranks.keys()]);
+  const play = (state: GameState, word: string, seconds: number) =>
+    submitGuess(state, word, { puzzle, vocabulary }, at(seconds));
+
+  it('wins the round with any form of the secret word', () => {
+    const { outcome } = play(started(), 'paints', 2);
+    expect(outcome).toMatchObject({ kind: 'accepted', bullseye: true, guess: { rank: 1 } });
+  });
+
+  it('counts another form of an earlier guess as a repeat', () => {
+    const { state } = play(started(), 'brush', 2);
+    const { outcome } = play(state, 'brushes', 3);
+    expect(outcome).toMatchObject({
+      kind: 'rejected',
+      reason: 'duplicate',
+      earlier: { word: 'brush', rank: 12 },
+    });
+  });
+
+  it('rejects any form of the hint', () => {
+    const { outcome } = play(started(), 'color', 2);
+    expect(outcome).toMatchObject({ kind: 'rejected', reason: 'hint' });
   });
 });
 

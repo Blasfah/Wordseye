@@ -45,10 +45,11 @@ export function WordsDialog({ index, puzzleRound, score, guesses, revealed, onCl
   }, []);
 
   const close = () => dialog.current?.close();
-  const guessed = new Set(guesses.map((g) => g.word));
-  const hinted = new Set(revealed.map((h) => h.word));
+  // By rank, so a guess of "bees" lights up "bee": forms of a word share a rank.
+  const guessed = new Set(guesses.map((g) => g.rank));
+  const hinted = new Set(revealed.map((h) => h.rank));
   const words = topWords(puzzleRound, limit);
-  const found = words.filter((w) => guessed.has(w.word)).length;
+  const found = words.filter((w) => guessed.has(w.rank)).length;
   const sorted = sortGuesses(guesses);
   const extra = sorted.length - LISTED_GUESSES;
 
@@ -145,15 +146,15 @@ export function WordsDialog({ index, puzzleRound, score, guesses, revealed, onCl
                       key={word}
                       class={cls(
                         'words-item',
-                        guessed.has(word) && 'is-guessed',
-                        hinted.has(word) && 'is-hinted',
+                        guessed.has(rank) && 'is-guessed',
+                        hinted.has(rank) && 'is-hinted',
                         rank === 1 && 'is-target',
                       )}
                     >
                       <span class="words-rank">{rank}</span>
                       <span class="words-word">{word}</span>
-                      {guessed.has(word) && <span class="visually-hidden"> (your guess)</span>}
-                      {hinted.has(word) && <span class="visually-hidden"> (extra hint)</span>}
+                      {guessed.has(rank) && <span class="visually-hidden"> (your guess)</span>}
+                      {hinted.has(rank) && <span class="visually-hidden"> (extra hint)</span>}
                     </li>
                   ))}
               </ol>

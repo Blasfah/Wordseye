@@ -50,7 +50,7 @@ export const CONFIG = {
   /** Extra hints are words from this rank range: close, but never a bullseye. */
   extraHintRanks: [11, 100],
   /** A word comes back on another level only after this many days. */
-  levelReuseGapDays: 90,
+  levelReuseGapDays: 120,
 
   zones: ZONES,
 
@@ -68,7 +68,7 @@ export const CONFIG = {
   skipKey: 'Escape',
 
   /** Bump the version suffix to discard everyone's saved games and stats. */
-  storagePrefix: 'wordseye:v2',
+  storagePrefix: 'wordseye:v3',
 } as const;
 
 export type Config = typeof CONFIG;

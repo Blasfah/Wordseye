@@ -2,14 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { newGame, startGame, submitGuess } from '../game/game';
 import { PUZZLE, VOCABULARY, at } from '../game/testing';
 import { isManifest, isPuzzleIndex, isWordFile } from './load';
-import {
-  isGameRecord,
-  isGameState,
-  loadGame,
-  loadGames,
-  loadHistory,
-  upgradeGame,
-} from './storage';
+import { isGameRecord, isGameState, loadGame, loadGames, loadHistory } from './storage';
 
 describe('saved game validation', () => {
   it('accepts a real game, including after a JSON round trip', () => {
@@ -25,6 +18,7 @@ describe('saved game validation', () => {
     expect(isGameState({ ...good, status: 'paused' })).toBe(false);
     expect(isGameState({ ...good, rounds: good.rounds.slice(1) })).toBe(false);
     expect(isGameState({ ...good, current: 5 })).toBe(false);
+    expect(isGameState({ ...good, level: undefined })).toBe(false);
     const badGuess = { word: 'x', rank: '3', zone: 'hot', atMs: 0 };
     expect(
       isGameState({ ...good, rounds: good.rounds.map((r) => ({ ...r, guesses: [badGuess] })) }),
@@ -32,16 +26,17 @@ describe('saved game validation', () => {
   });
 
   it('checks history records', () => {
-    expect(
-      isGameRecord({
-        puzzleNumber: 1,
-        score: 10,
-        bullseyes: 0,
-        rounds: 5,
-        timeUsedMs: 1,
-        zones: [],
-      }),
-    ).toBe(true);
+    const record = {
+      puzzleNumber: 1,
+      score: 10,
+      bullseyes: 0,
+      rounds: 5,
+      timeUsedMs: 1,
+      zones: [],
+    };
+    expect(isGameRecord({ ...record, level: 'easy' })).toBe(true);
+    expect(isGameRecord(record)).toBe(false);
+    expect(isGameRecord({ ...record, level: 'extreme' })).toBe(false);
     expect(isGameRecord({ puzzleNumber: 1, score: '10' })).toBe(false);
   });
 
@@ -58,45 +53,26 @@ describe('data file validation', () => {
 
   const days = { easy: [day, day], medium: [day, day], hard: [day, day] };
   const word = {
-    v: 3,
+    v: 4,
     hints: { easy: 'old', medium: 'value' },
     extras: ['furniture'],
-    neighbors: ['antique', 'antiques', 'furniture'],
+    neighbors: ['antique antiques', 'furniture'],
   };
 
   it('accepts well-formed files', () => {
-    expect(isManifest({ v: 3, vocab: 'vocab.abc.txt', index: 'index.def.json' })).toBe(true);
-    expect(isPuzzleIndex({ v: 3, days })).toBe(true);
+    expect(isManifest({ v: 4, vocab: 'vocab.abc.txt', index: 'index.def.json' })).toBe(true);
+    expect(isPuzzleIndex({ v: 4, days })).toBe(true);
     expect(isWordFile(word)).toBe(true);
   });
 
   it('rejects the wrong shape', () => {
-    expect(isManifest({ v: 2, vocab: 'x', index: 'y' })).toBe(false);
-    expect(isManifest({ v: 3, vocab: 'x' })).toBe(false);
-    expect(isPuzzleIndex({ v: 3, days: { ...days, hard: [day] } })).toBe(false);
-    expect(isPuzzleIndex({ v: 3, days: { easy: [], medium: [], hard: [] } })).toBe(false);
-    expect(isPuzzleIndex({ v: 3, days: { ...days, easy: [day.slice(1), day] } })).toBe(false);
+    expect(isManifest({ v: 3, vocab: 'x', index: 'y' })).toBe(false);
+    expect(isManifest({ v: 4, vocab: 'x' })).toBe(false);
+    expect(isPuzzleIndex({ v: 4, days: { ...days, hard: [day] } })).toBe(false);
+    expect(isPuzzleIndex({ v: 4, days: { easy: [], medium: [], hard: [] } })).toBe(false);
+    expect(isPuzzleIndex({ v: 4, days: { ...days, easy: [day.slice(1), day] } })).toBe(false);
     expect(isWordFile({ ...word, neighbors: [] })).toBe(false);
     expect(isWordFile({ ...word, hints: { easy: 3 } })).toBe(false);
-    expect(isWordFile({ ...word, v: 2 })).toBe(false);
-  });
-});
-
-describe('saved data from before levels', () => {
-  it('reads an old saved game as a medium game with no extra hints used', () => {
-    // What a game saved before levels looked like.
-    const oldGame = JSON.parse(JSON.stringify(newGame(4, 'medium')));
-    delete oldGame.level;
-    for (const round of oldGame.rounds) delete round.extraHints;
-    expect(isGameState(oldGame)).toBe(true);
-    const upgraded = upgradeGame(oldGame as Parameters<typeof upgradeGame>[0]);
-    expect(upgraded.level).toBe('medium');
-    expect(upgraded.rounds.every((round) => round.extraHints === 0)).toBe(true);
-  });
-
-  it('accepts old history records without a level', () => {
-    const old = { puzzleNumber: 2, score: 300, bullseyes: 2, rounds: 5, timeUsedMs: 9, zones: [] };
-    expect(isGameRecord(old)).toBe(true);
-    expect(isGameRecord({ ...old, level: 'extreme' })).toBe(false);
+    expect(isWordFile({ ...word, v: 3 })).toBe(false);
   });
 });

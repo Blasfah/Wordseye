@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "data:fetch": "tsx scripts/fetch-vectors.ts",
+    "data:vectors": "tsx scripts/blend-vectors.ts",
     "data:targets": "tsx scripts/find-targets.ts",
     "data:build": "tsx scripts/build-puzzles.ts"
   },

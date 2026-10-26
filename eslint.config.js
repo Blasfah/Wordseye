@@ -19,7 +19,7 @@ export default defineConfig(
     },
   },
   {
-    files: ['scripts/**/*.ts', '*.config.{js,ts}'],
+    files: ['scripts/**/*.{ts,mjs}', '*.config.{js,ts}'],
     languageOptions: { globals: globals.node },
   },
   prettier,

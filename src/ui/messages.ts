@@ -36,7 +36,9 @@ export function feedbackMessage(feedback: Feedback, puzzle: Puzzle): Message | n
       case 'not-a-word':
         return { text: 'Just one word, letters only.' };
       case 'revealed':
-        return { text: `“${outcome.word}” is one of your extra hints. Try a word near it.` };
+        return {
+          text: `“${outcome.word}” is one of your extra hints, or a form of one. Try a word near it.`,
+        };
       case 'hint':
         return { text: "That's the hint, or a form of it. Try a word near it." };
       case 'duplicate': {
@@ -44,7 +46,11 @@ export function feedbackMessage(feedback: Feedback, puzzle: Puzzle): Message | n
         const where = earlier
           ? ` It was ${zoneInfo(earlier.zone).label.toLowerCase()}, ${rankText(earlier.rank)}.`
           : '';
-        return { text: `You already tried “${outcome.word}”.${where}` };
+        const tried =
+          earlier && earlier.word !== outcome.word
+            ? `“${outcome.word}” is a form of “${earlier.word}”, which you already tried.`
+            : `You already tried “${outcome.word}”.`;
+        return { text: `${tried}${where}` };
       }
       default:
         return null;

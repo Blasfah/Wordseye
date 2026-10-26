@@ -4,10 +4,14 @@ import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
+import { createGunzip } from 'node:zlib';
 import { SCRIPTS_DIR } from './paths';
 
 export const VOCAB_SETTINGS = {
-  /** Only the N most frequent tokens of the vector file are read (GloVe is frequency-sorted). */
+  /**
+   * Only the N most frequent tokens of the vector file are read (GloVe is
+   * frequency-sorted, and the blend keeps GloVe's order).
+   */
   frequencyCutoff: 100_000,
   /** SCOWL dictionary size, 10–70. Bigger admits rarer words. */
   dictionarySize: 60,
@@ -132,6 +136,48 @@ export async function loadVocabulary(path: string, lists: WordLists): Promise<Vo
   words.forEach((word, i) => (rankable[i] = lists.stopwords.has(word) ? 0 : 1));
   const commonness = new Map(words.map((word) => [word, dictionary.get(word)!]));
   return { words, index, dims, vectors, rankable, commonness };
+}
+
+/**
+ * Unit-length vectors for just the words in `wanted`, from any word2vec-style
+ * text file (gzipped too). ConceptNet's "/c/en/" prefixes are dropped. The first
+ * line for a word wins, so a cased file's lowercase entry is the one kept.
+ */
+export async function readVectorRows(
+  path: string,
+  wanted: ReadonlySet<string>,
+): Promise<Map<string, Float32Array>> {
+  const input = createReadStream(path);
+  const stream = path.endsWith('.gz') ? input.pipe(createGunzip()) : input;
+  const lines = createInterface({ input: stream, crlfDelay: Infinity });
+  const found = new Map<string, Float32Array>();
+  let first = true;
+  for await (const line of lines) {
+    if (first && /^\d+ \d+$/.test(line.trim())) {
+      first = false;
+      continue;
+    }
+    first = false;
+    const space = line.indexOf(' ');
+    const word = line.slice(0, space).replace(/^\/c\/en\//, '');
+    if (!wanted.has(word) || found.has(word)) continue;
+    const row = Float32Array.from(
+      line
+        .slice(space + 1)
+        .trim()
+        .split(' '),
+      Number,
+    );
+    let norm = 0;
+    for (let k = 0; k < row.length; k++) norm += row[k] * row[k];
+    norm = Math.sqrt(norm) || 1;
+    for (let k = 0; k < row.length; k++) row[k] /= norm;
+    found.set(word, row);
+    if (found.size === wanted.size) break;
+  }
+  lines.close();
+  input.destroy();
+  return found;
 }
 
 export function similarity(vocab: Vocabulary, a: number, b: number): number {

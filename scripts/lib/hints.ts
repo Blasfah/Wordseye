@@ -150,9 +150,9 @@ async function scoreBackRanks(
 }
 
 /**
- * Picks every target's hints. Medium is chosen first and exactly as it always
- * was, so published puzzles keep their hints; easy and hard then avoid its word
- * family (and each other's), and the extras avoid all three.
+ * Picks every target's hints. `neighborLists` are in rank order, starting with
+ * the target. Medium is chosen first; easy and hard then avoid its word family
+ * (and each other's), and the extras avoid all three.
  */
 export async function chooseAllHints(
   vocab: Vocabulary,

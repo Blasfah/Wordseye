@@ -1,25 +1,56 @@
 /**
- * Downloads the GloVe 6B word vectors (Wikipedia 2014 + Gigaword 5, uncased)
- * and extracts the 300-dimensional file into scripts/.cache/.
+ * Downloads the pretrained word vectors into scripts/.cache/ (gitignored):
+ *
+ *   GloVe 6B 300d          ~860 MB zip, ~1 GB extracted. Sets the vocabulary and word frequency.
+ *   fastText Common Crawl  ~1.5 GB zip, ~4.5 GB extracted.
+ *   ConceptNet Numberbatch ~330 MB, read as it is (gzipped).
  *
  *   npm run data:fetch
  *
- * The zip is ~860 MB and the extracted text file ~1 GB. Both are gitignored.
+ * Files already present are skipped. Afterwards, `npm run data:vectors` adds the
+ * third model (BGE) and blends them.
  */
 import { createWriteStream, existsSync } from 'node:fs';
 import { mkdir, rename, rm, stat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { CACHE_DIR, DEFAULT_VECTORS_PATH as VECTORS_PATH } from './lib/paths';
+import { CACHE_DIR, FASTTEXT_PATH, GLOVE_PATH, NUMBERBATCH_PATH } from './lib/paths';
 import { listZipEntries, openZipEntry } from './lib/zip';
 
-const ZIP_PATH = join(CACHE_DIR, 'glove.6B.zip');
-const ENTRY_NAME = 'glove.6B.300d.txt';
+interface Source {
+  name: string;
+  /** Tried in order. */
+  urls: string[];
+  /** The file the scripts read. */
+  path: string;
+  /** Set when the download is a zip holding that file. */
+  zip?: { path: string; entry: string };
+}
 
-const MIRRORS = [
-  'https://huggingface.co/stanfordnlp/glove/resolve/main/glove.6B.zip',
-  'https://nlp.stanford.edu/data/glove.6B.zip',
+const SOURCES: Source[] = [
+  {
+    name: 'GloVe 6B',
+    urls: [
+      'https://huggingface.co/stanfordnlp/glove/resolve/main/glove.6B.zip',
+      'https://nlp.stanford.edu/data/glove.6B.zip',
+    ],
+    path: GLOVE_PATH,
+    zip: { path: join(CACHE_DIR, 'glove.6B.zip'), entry: 'glove.6B.300d.txt' },
+  },
+  {
+    name: 'fastText Common Crawl',
+    urls: ['https://dl.fbaipublicfiles.com/fasttext/vectors-english/crawl-300d-2M.vec.zip'],
+    path: FASTTEXT_PATH,
+    zip: { path: join(CACHE_DIR, 'crawl-300d-2M.vec.zip'), entry: 'crawl-300d-2M.vec' },
+  },
+  {
+    name: 'ConceptNet Numberbatch',
+    urls: [
+      'https://conceptnet.s3.amazonaws.com/downloads/2019/numberbatch/numberbatch-en-19.08.txt.gz',
+    ],
+    path: NUMBERBATCH_PATH,
+  },
 ];
 
 function progress(label: string, total: number): Transform {
@@ -43,52 +74,53 @@ function progress(label: string, total: number): Transform {
   });
 }
 
-async function download(): Promise<void> {
-  const partPath = `${ZIP_PATH}.part`;
-  for (const url of MIRRORS) {
+async function download(urls: readonly string[], path: string): Promise<void> {
+  const partPath = `${path}.part`;
+  for (const url of urls) {
     try {
       console.log(`Downloading ${url}`);
-      const response = await fetch(url, { signal: AbortSignal.timeout(60 * 60 * 1000) });
+      const response = await fetch(url, { signal: AbortSignal.timeout(2 * 60 * 60 * 1000) });
       if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
       const total = Number(response.headers.get('content-length') ?? 0);
       await pipeline(
         Readable.fromWeb(response.body as import('node:stream/web').ReadableStream),
-        progress('glove.6B.zip', total),
+        progress(basename(path), total),
         createWriteStream(partPath),
       );
-      await rename(partPath, ZIP_PATH);
+      await rename(partPath, path);
       return;
     } catch (error) {
       console.warn(`  failed: ${(error as Error).message}`);
       await rm(partPath, { force: true });
     }
   }
-  throw new Error('Could not download GloVe from any mirror. See README for manual steps.');
+  throw new Error(`Could not download ${basename(path)}. See README for manual steps.`);
+}
+
+async function fetchSource({ name, urls, path, zip }: Source): Promise<void> {
+  if (existsSync(path)) {
+    const { size } = await stat(path);
+    console.log(`${name}: ${basename(path)} already present (${(size / 1e6).toFixed(0)} MB).`);
+    return;
+  }
+  if (!zip) return download(urls, path);
+
+  if (!existsSync(zip.path)) await download(urls, zip.path);
+  const entry = (await listZipEntries(zip.path)).find((e) => e.name === zip.entry);
+  if (!entry) throw new Error(`${zip.entry} not found inside ${zip.path}`);
+  const partPath = `${path}.part`;
+  await pipeline(
+    await openZipEntry(zip.path, entry),
+    progress(`Extracting ${zip.entry}`, entry.size),
+    createWriteStream(partPath),
+  );
+  await rename(partPath, path);
+  console.log(`Wrote ${path}. You can delete ${basename(zip.path)} to get the disk space back.`);
 }
 
 async function main(): Promise<void> {
   await mkdir(CACHE_DIR, { recursive: true });
-
-  if (existsSync(VECTORS_PATH)) {
-    const { size } = await stat(VECTORS_PATH);
-    console.log(`${ENTRY_NAME} already present (${(size / 1e6).toFixed(0)} MB). Nothing to do.`);
-    return;
-  }
-
-  if (!existsSync(ZIP_PATH)) await download();
-
-  const entry = (await listZipEntries(ZIP_PATH)).find((e) => e.name === ENTRY_NAME);
-  if (!entry) throw new Error(`${ENTRY_NAME} not found inside ${ZIP_PATH}`);
-
-  const partPath = `${VECTORS_PATH}.part`;
-  await pipeline(
-    await openZipEntry(ZIP_PATH, entry),
-    progress(`Extracting ${ENTRY_NAME}`, entry.size),
-    createWriteStream(partPath),
-  );
-  await rename(partPath, VECTORS_PATH);
-  console.log(`Wrote ${VECTORS_PATH}`);
-  console.log('You can delete glove.6B.zip now if you want the disk space back.');
+  for (const source of SOURCES) await fetchSource(source);
 }
 
 main().catch((error: unknown) => {

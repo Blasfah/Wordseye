@@ -18,8 +18,8 @@ import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { LEVELS } from '../src/config';
+import { groupForms, rankForms } from './lib/forms';
 import { chooseAllHints, isUsableHint } from './lib/hints';
-import { nearest } from './lib/parallel';
 import { DEFAULT_VECTORS_PATH, SCRIPTS_DIR, SCRIPTS_OUTPUT_DIR } from './lib/paths';
 import { seededRandom, shuffle } from './lib/schedule';
 import {
@@ -180,6 +180,7 @@ async function main(): Promise<void> {
   console.log(`Reading ${args.vectors}…`);
   const vocab = await loadVocabulary(args.vectors, lists);
 
+  const forms = groupForms(vocab);
   const known = (words: string[]) =>
     words.map((w) => vocab.index.get(w)).filter((i): i is number => i !== undefined);
   const curated = known(await readWordList('targets.txt'));
@@ -224,17 +225,20 @@ async function main(): Promise<void> {
     return { likeness: good.mean - 0.5 * bad.mean, anchor: good.closest };
   };
 
-  // Tightness and off-topic need each word's neighborhood.
+  // Tightness and off-topic need each word's neighborhood (other forms of a word count once).
   const areas = Object.entries(OFF_TOPIC).map(([area, seeds]) => ({
     area,
     center: centroid(vocab, known(seeds)),
   }));
   const describe = async (words: number[], label: string): Promise<Scored[]> => {
-    const near = await nearest(vocab, words, 20, label);
+    const near = await rankForms(vocab, forms, words, 21, label);
     return words.map((word, w) => {
-      const { indices, sims } = near[w];
-      const tightness = sims.slice(0, 10).reduce((a, b) => a + b, 0) / 10;
-      const hood = centroid(vocab, Array.from(indices));
+      const { groups, sims } = near[w];
+      const tightness = sims.slice(1, 11).reduce((a, b) => a + b, 0) / 10;
+      const hood = centroid(
+        vocab,
+        groups.slice(1).map((group) => group[0]),
+      );
       let offTopic = -1;
       let offTopicArea = '';
       for (const { area, center } of areas) {
@@ -294,8 +298,9 @@ async function main(): Promise<void> {
   }
 
   // Only words that get a decent hint.
-  const neighborLists = await nearest(
+  const forHints = await rankForms(
     vocab,
+    forms,
     shortlist.map((s) => s.word),
     // Deep enough for the hard level's hint window.
     Math.max(...LEVELS.map((level) => level.hintRanks[1])),
@@ -303,10 +308,7 @@ async function main(): Promise<void> {
   );
   const hints = await chooseAllHints(
     vocab,
-    shortlist.map((s, i) => [
-      vocab.words[s.word],
-      ...Array.from(neighborLists[i].indices, (j) => vocab.words[j]),
-    ]),
+    forHints.map(({ groups }) => groups.map((group) => vocab.words[group[0]])),
     lists.hintAvoid,
   );
   // The medium hint is the bar a new target must clear.

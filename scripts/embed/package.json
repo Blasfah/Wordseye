@@ -1,0 +1,9 @@
+{
+  "name": "wordseye-embed",
+  "private": true,
+  "description": "Embeds the vocabulary with BGE for the puzzle data. Kept apart so the site's own install stays light.",
+  "type": "module",
+  "dependencies": {
+    "@huggingface/transformers": "3.8.1"
+  }
+}

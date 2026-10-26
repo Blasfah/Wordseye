@@ -4,7 +4,7 @@ import { createPuzzleRound } from '../game/puzzle';
 import type { Puzzle, PuzzleRound } from '../game/types';
 
 /** The data format this code understands. */
-export const DATA_VERSION = 3;
+export const DATA_VERSION = 4;
 
 export interface Manifest {
   v: typeof DATA_VERSION;
@@ -25,7 +25,10 @@ interface WordFile {
   hints: Partial<Record<LevelId, string>>;
   /** Extra hint words, in the order they're revealed. */
   extras: string[];
-  /** Rank order, starting with the target itself. */
+  /**
+   * Rank order, starting with the target itself. Forms of one word share an
+   * entry and a rank, separated by spaces, the one to show first: "bee bees".
+   */
   neighbors: string[];
 }
 

@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef } from 'preact/hooks';
 import { CONFIG } from '../config';
 import { dateForDay } from '../game/daily';
+import { levelInfo } from '../game/levels';
+import { LEVEL_BLURB, LevelPicker } from './LevelPicker';
 import { NavLinks } from './NavLinks';
 import { Stats } from './Stats';
 import { focusKeyboardProxy, formatPuzzleDate } from './helpers';
@@ -16,7 +18,7 @@ export function Start() {
   };
 
   const number = game.value.puzzleNumber;
-  const minutes = CONFIG.gameSeconds / 60;
+  const { gameSeconds, extraHints } = levelInfo(game.value.level);
   return (
     <section class="screen start" aria-labelledby="start-title">
       <h1 id="start-title" class="wordmark">
@@ -24,9 +26,12 @@ export function Start() {
       </h1>
       <p class="quiet">
         {isPractice.value
-          ? `Practice game #${number} · not saved`
+          ? `Practice · puzzle #${number} · not saved`
           : `Puzzle #${number} · ${formatPuzzleDate(dateForDay(number, CONFIG.firstPuzzleDate))}`}
       </p>
+
+      <LevelPicker />
+      <p class="level-blurb quiet small">{LEVEL_BLURB[game.value.level]}</p>
 
       <div class="howto">
         <p>
@@ -37,6 +42,12 @@ export function Start() {
           Land in the top {CONFIG.zones[0].maxRank} for a <strong>bullseye</strong> and you move
           straight on.
         </p>
+        {extraHints > 0 && (
+          <p>
+            Stuck? An <strong>extra hint</strong> shows you another word near the secret, with its
+            rank.
+          </p>
+        )}
       </div>
 
       <ZoneLegend />
@@ -45,11 +56,11 @@ export function Start() {
         Start
       </button>
       <p class="quiet small">
-        {CONFIG.roundsPerGame} rounds, one {formatMinutes(minutes)} clock. Skip a round any time
-        with <kbd>Esc</kbd>.
+        {CONFIG.roundsPerGame} rounds, one {formatMinutes(gameSeconds / 60)} clock. Skip a round any
+        time with <kbd>Esc</kbd>.
       </p>
 
-      <Stats />
+      <Stats level={game.value.level} />
       <NavLinks />
     </section>
   );

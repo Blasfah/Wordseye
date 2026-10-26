@@ -1,5 +1,6 @@
 import { CONFIG } from '../config';
 import { bestGuess, gameDurationMs } from './game';
+import { rulesFor } from './levels';
 import type { GameState, Guess, RoundState, RoundStatus, Rules, ZoneId } from './types';
 import { bullseyeZone, zoneInfo } from './zones';
 
@@ -22,7 +23,7 @@ export interface GameScore {
 }
 
 /** Bonus for a bullseye that took `roundMs` to find. */
-export function speedBonus(roundMs: number, rules: Rules = CONFIG): number {
+export function speedBonus(roundMs: number, rules: Pick<Rules, 'speedBonus'> = CONFIG): number {
   const { maxPoints, fullBonusSeconds, noBonusSeconds } = rules.speedBonus;
   const seconds = roundMs / 1000;
   if (seconds <= fullBonusSeconds) return maxPoints;
@@ -31,7 +32,10 @@ export function speedBonus(roundMs: number, rules: Rules = CONFIG): number {
   return Math.round(maxPoints * fraction);
 }
 
-export function scoreRound(round: RoundState, rules: Rules = CONFIG): RoundScore {
+export function scoreRound(
+  round: RoundState,
+  rules: Pick<Rules, 'zones' | 'speedBonus'> = CONFIG,
+): RoundScore {
   const best = bestGuess(round);
   const reached = round.status !== 'upcoming';
   const zone = reached ? (best?.zone ?? rules.zones[rules.zones.length - 1].id) : null;
@@ -50,7 +54,7 @@ export function scoreRound(round: RoundState, rules: Rules = CONFIG): RoundScore
   };
 }
 
-export function scoreGame(state: GameState, rules: Rules = CONFIG): GameScore {
+export function scoreGame(state: GameState, rules: Rules = rulesFor(state.level)): GameScore {
   const rounds = state.rounds.map((round) => scoreRound(round, rules));
   return {
     rounds,

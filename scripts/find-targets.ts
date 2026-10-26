@@ -17,7 +17,8 @@ import { existsSync } from 'node:fs';
 import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { chooseHints, isUsableHint } from './lib/hints';
+import { LEVELS } from '../src/config';
+import { chooseAllHints, isUsableHint } from './lib/hints';
 import { nearest } from './lib/parallel';
 import { DEFAULT_VECTORS_PATH, SCRIPTS_DIR, SCRIPTS_OUTPUT_DIR } from './lib/paths';
 import { seededRandom, shuffle } from './lib/schedule';
@@ -296,10 +297,11 @@ async function main(): Promise<void> {
   const neighborLists = await nearest(
     vocab,
     shortlist.map((s) => s.word),
-    80,
+    // Deep enough for the hard level's hint window.
+    Math.max(...LEVELS.map((level) => level.hintRanks[1])),
     'ranking for hints',
   );
-  const hints = await chooseHints(
+  const hints = await chooseAllHints(
     vocab,
     shortlist.map((s, i) => [
       vocab.words[s.word],
@@ -307,9 +309,10 @@ async function main(): Promise<void> {
     ]),
     lists.hintAvoid,
   );
+  // The medium hint is the bar a new target must clear.
   const chosen = shortlist
-    .map((s, i) => ({ ...s, hint: hints[i] }))
-    .filter((s) => isUsableHint(s.hint))
+    .map((s, i) => ({ ...s, hint: hints[i].levels.medium }))
+    .filter((s) => isUsableHint('medium', s.hint))
     .slice(0, wanted);
 
   // Append, so earlier reviewed proposals are never touched.

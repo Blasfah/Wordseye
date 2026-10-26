@@ -16,7 +16,7 @@ import type { GameState, Guess } from './types';
 const input = { puzzle: PUZZLE, vocabulary: VOCABULARY };
 
 function started(): GameState {
-  return startGame(newGame(PUZZLE.number), at(0));
+  return startGame(newGame(PUZZLE.number, PUZZLE.level), at(0));
 }
 
 function guess(state: GameState, word: string, seconds: number) {
@@ -25,7 +25,7 @@ function guess(state: GameState, word: string, seconds: number) {
 
 describe('starting a game', () => {
   it('creates five upcoming rounds', () => {
-    const game = newGame(7);
+    const game = newGame(7, 'easy');
     expect(game.status).toBe('ready');
     expect(game.rounds).toHaveLength(5);
     expect(game.rounds.every((r) => r.status === 'upcoming')).toBe(true);
@@ -148,25 +148,25 @@ describe('bullseyes and skips', () => {
 });
 
 describe('the shared clock', () => {
-  it('counts down from 150 seconds', () => {
+  it("counts down from the level's 3 minutes", () => {
     const game = started();
-    expect(timeLeftMs(game, at(0))).toBe(150_000);
-    expect(timeLeftMs(game, at(149.5))).toBe(500);
-    expect(gameClock(newGame(1), at(10))).toBe(0);
+    expect(timeLeftMs(game, at(0))).toBe(180_000);
+    expect(timeLeftMs(game, at(179.5))).toBe(500);
+    expect(gameClock(newGame(1, 'medium'), at(10))).toBe(0);
   });
 
   it('never runs backwards or past the end', () => {
     const game = started();
     expect(gameClock(game, at(-5))).toBe(0);
-    expect(gameClock(game, at(400))).toBe(150_000);
+    expect(gameClock(game, at(400))).toBe(180_000);
   });
 
   it('times out the current round and leaves the rest unplayed', () => {
     let { state } = guess(started(), 'antique', 30);
     ({ state } = guess(state, 'cute', 40));
-    state = syncClock(state, at(150));
+    state = syncClock(state, at(180));
     expect(state.status).toBe('finished');
-    expect(state.endedMs).toBe(150_000);
+    expect(state.endedMs).toBe(180_000);
     expect(state.rounds.map((r) => r.status)).toEqual([
       'bullseye',
       'timeout',
@@ -177,7 +177,7 @@ describe('the shared clock', () => {
   });
 
   it('refuses guesses once time is up, even without a tick', () => {
-    const { state, outcome } = guess(started(), 'antique', 151);
+    const { state, outcome } = guess(started(), 'antique', 181);
     expect(outcome).toMatchObject({ kind: 'rejected', reason: 'not-playing' });
     expect(state.status).toBe('finished');
     expect(state.rounds[0].status).toBe('timeout');
@@ -185,7 +185,7 @@ describe('the shared clock', () => {
 
   it('leaves a running game alone while time remains', () => {
     const game = started();
-    expect(syncClock(game, at(149))).toBe(game);
+    expect(syncClock(game, at(179))).toBe(game);
   });
 });
 
@@ -213,6 +213,7 @@ describe('guess lists', () => {
       status: 'playing' as const,
       startMs: 0,
       endMs: null,
+      extraHints: 0,
       guesses: [make('a', 50), make('b', 50)],
     };
     expect(bestGuess(round)?.word).toBe('a');

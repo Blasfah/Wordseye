@@ -344,3 +344,46 @@
     padding-bottom: 0;
   }
 }
+
+/* ---------------------------------------------------------------- extra hints */
+
+.round-actions {
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.extra-hint-button[disabled] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.extra-hint-button[disabled]:hover {
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.hint-count {
+  font-size: 0.8em;
+  font-weight: 700;
+  padding: 0.1em 0.5em;
+  border-radius: 0.5em;
+  background: var(--paper-deep);
+}
+
+/* A revealed hint word: a lighter wash of its zone, so it reads as given, not guessed. */
+.guess-pill.is-hint {
+  background: color-mix(in srgb, var(--zone-tint) 45%, var(--paper));
+  animation: ease-in-down var(--duration-gentle) var(--ease-soft) both;
+}
+
+.guess-pill.is-hint .guess-word {
+  font-style: italic;
+  font-weight: 600;
+}
+
+@media (prefers-color-scheme: dark) {
+  .guess-pill.is-hint {
+    background: color-mix(in srgb, var(--zone-tint) 30%, var(--paper));
+    color: var(--ink);
+  }
+}

@@ -1,15 +1,28 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { CONFIG } from '../config';
 import { nextRollover } from '../game/daily';
+import { revealedHints } from '../game/game';
+import { harderLevel, levelInfo } from '../game/levels';
 import type { RoundScore } from '../game/scoring';
 import { formatClock, shareText } from '../game/share';
 import type { PuzzleRound } from '../game/types';
 import { zoneInfo } from '../game/zones';
+import { LevelPicker } from './LevelPicker';
 import { NavLinks } from './NavLinks';
 import { Stats } from './Stats';
 import { WordsDialog } from './WordsDialog';
 import { copyText, focusKeyboardProxy, formatCountdown, rankLabel } from './helpers';
-import { game, isPractice, load, playAnother, puzzle, route, score } from './state';
+import {
+  chooseLevel,
+  dayProgress,
+  game,
+  isPractice,
+  load,
+  playAnother,
+  puzzle,
+  route,
+  score,
+} from './state';
 
 export function Results() {
   const state = game.value;
@@ -18,6 +31,10 @@ export function Results() {
   const timedOut = state.rounds.some((r) => r.status === 'timeout');
 
   const practice = isPractice.value;
+  // Nudge towards the next level up, if it's still to play.
+  const next = harderLevel(state.level);
+  const tryNext =
+    !practice && next !== null && dayProgress.value[next].status !== 'finished' ? next : null;
   const [openRound, setOpenRound] = useState<number | null>(null);
 
   const heading = useRef<HTMLHeadingElement>(null);
@@ -29,7 +46,7 @@ export function Results() {
   return (
     <section class="screen results" aria-labelledby="results-title">
       <p class="quiet">
-        {practice ? 'Practice' : CONFIG.name} #{state.puzzleNumber}
+        {practice ? 'Practice' : CONFIG.name} #{state.puzzleNumber} · {levelInfo(state.level).label}
       </p>
       <h1 id="results-title" class="score" tabIndex={-1} ref={heading}>
         <span class="score-number">{result.total}</span>
@@ -41,9 +58,18 @@ export function Results() {
       </p>
 
       {practice && <PlayAnother />}
+      {tryNext && (
+        <button
+          type="button"
+          class="button button-primary button-big try-next"
+          onClick={() => void chooseLevel(tryNext)}
+        >
+          Try {levelInfo(tryNext).label}
+        </button>
+      )}
       <ShareButton
-        quiet={practice}
-        text={shareText(state, CONFIG, {
+        quiet={practice || tryNext !== null}
+        text={shareText(state, undefined, {
           name: practice ? `${CONFIG.name} practice` : CONFIG.name,
           unplayedEmoji: CONFIG.unplayedEmoji,
         })}
@@ -68,11 +94,19 @@ export function Results() {
           puzzleRound={today.rounds[openRound]}
           score={result.rounds[openRound]}
           guesses={state.rounds[openRound].guesses}
+          revealed={revealedHints(state.rounds[openRound], today.rounds[openRound].extras)}
           onClose={() => setOpenRound(null)}
         />
       )}
 
-      <Stats />
+      <section class="results-levels" aria-labelledby="levels-title">
+        <h2 id="levels-title" class="section-title">
+          {practice ? 'Practise another level' : 'This puzzle on every level'}
+        </h2>
+        <LevelPicker />
+      </section>
+
+      <Stats level={state.level} />
       {route.value.view === 'today' && <NextPuzzle puzzleNumber={state.puzzleNumber} />}
       <NavLinks />
     </section>

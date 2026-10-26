@@ -1,4 +1,5 @@
 import { CONFIG } from '../config';
+import { levelInfo, rulesFor } from './levels';
 import { scoreGame } from './scoring';
 import type { GameState, Rules } from './types';
 import { zoneInfo } from './zones';
@@ -14,15 +15,16 @@ interface ShareOptions {
   unplayedEmoji: string;
 }
 
-/** Spoiler-free result: "Wordseye #42 · 380 pts", then a circle per round and the time. */
+/** Spoiler-free result: "Wordseye #42 · Hard · 380 pts", then a circle per round and the time. */
 export function shareText(
   state: GameState,
-  rules: Rules = CONFIG,
+  rules: Rules = rulesFor(state.level),
   { name, unplayedEmoji }: ShareOptions = CONFIG,
 ): string {
   const score = scoreGame(state, rules);
   const circles = score.rounds
     .map((round) => (round.zone ? zoneInfo(round.zone, rules.zones).emoji : unplayedEmoji))
     .join('');
-  return `${name} #${state.puzzleNumber} · ${score.total} pts\n${circles} · ${formatClock(score.timeUsedMs)}`;
+  const level = levelInfo(state.level).label;
+  return `${name} #${state.puzzleNumber} · ${level} · ${score.total} pts\n${circles} · ${formatClock(score.timeUsedMs)}`;
 }

@@ -1,15 +1,26 @@
-/** Choosing a hint for each target: close, common, and pointing back at the target. */
+/**
+ * Choosing hints: a first hint per level and a few extra hint words, all
+ * close to the target and pointing back at it.
+ */
+import { CONFIG, LEVELS, type LevelId } from '../../src/config';
 import { familyKey, sameFamily } from '../../src/game/stem';
 import { countCloser } from './parallel';
-import { EVERYDAY, similarity, type Vocabulary } from './vocab';
+import {
+  centroid,
+  EVERYDAY,
+  isInflected,
+  similarity,
+  similarityTo,
+  type Vocabulary,
+} from './vocab';
 
 export const HINT_SETTINGS = {
-  /** Hints are picked from this window of the target's neighbor ranks. */
-  ranks: [20, 80] as const,
-  /** A hint should be among the N most frequent vocabulary words when possible. */
+  /** Prefer hints among the N most frequent vocabulary words. */
   commonness: 12_000,
-  /** A new target whose best hint points back more weakly than this isn't used. */
-  maxBackRank: 80,
+  /** A new target needs a first hint at least this good (back rank) to be used on a level. */
+  maxBackRank: { easy: 80, medium: 80, hard: 2000 } satisfies Record<LevelId, number>,
+  /** Extra hint words per target; a game can reveal up to the easy level's allowance. */
+  extras: Math.max(...LEVELS.map((level) => level.extraHints)),
 };
 
 export interface Hint {
@@ -20,21 +31,32 @@ export interface Hint {
   backRank: number;
 }
 
+export interface TargetHints {
+  /** First hint per level; null where none is good enough. */
+  levels: Record<LevelId, Hint | null>;
+  /** Extra hint words from the top 100, best first. */
+  extras: Hint[];
+}
+
 interface Candidate {
   word: number;
   rank: number;
   backRank: number;
 }
 
-/** Allowed hints from the rank window, limited to common words when there are any. */
+/**
+ * Allowed words from a rank window, preferring frequent, everyday ones.
+ * `everyday` is the SCOWL size counted as everyday English.
+ */
 function candidatesFor(
   vocab: Vocabulary,
   neighbors: readonly string[],
+  [lo, hi]: readonly [number, number],
   avoid: Set<string>,
+  everyday = EVERYDAY,
 ): Candidate[] {
-  const [lo, hi] = HINT_SETTINGS.ranks;
   const target = neighbors[0];
-  // A hint whose own family already appears above it would hand out a bullseye.
+  // A hint whose own family already appears above it would hand out a closer word.
   const closerFamilies = new Set(neighbors.slice(0, lo - 1).map(familyKey));
   const all: Candidate[] = [];
   for (let rank = lo; rank <= Math.min(hi, neighbors.length); rank++) {
@@ -45,8 +67,8 @@ function candidatesFor(
   }
   // Prefer words that are both frequent and everyday English (which screens out names).
   const frequent = all.filter((c) => c.word < HINT_SETTINGS.commonness);
-  const everyday = frequent.filter((c) => vocab.commonness.get(vocab.words[c.word])! <= EVERYDAY);
-  return everyday.length ? everyday : frequent.length ? frequent : all;
+  const common = frequent.filter((c) => vocab.commonness.get(vocab.words[c.word])! <= everyday);
+  return common.length ? common : frequent.length ? frequent : all;
 }
 
 /** "holders" reads worse as a hint than "holder" would. */
@@ -59,32 +81,64 @@ function isPlural(vocab: Vocabulary, word: string): boolean {
   );
 }
 
-/** Whether a hint is good enough to give a new target a puzzle. */
-export const isUsableHint = (hint: Hint | null): hint is Hint =>
-  hint !== null && hint.backRank <= HINT_SETTINGS.maxBackRank;
+/** Best hint first: the one that points back hardest at the target. */
+const byQuality = (vocab: Vocabulary) => (a: Candidate, b: Candidate) => {
+  const score = (c: Candidate) => c.backRank * (isPlural(vocab, vocab.words[c.word]) ? 2 : 1);
+  return score(a) - score(b) || a.rank - b.rank;
+};
 
 /**
- * Picks the best hint for every target (null only if no word qualifies). Generic
- * words ("away", "folks") sit close to everything, so the target is far down
- * their own neighbor lists; the best hint is the one that points back hardest.
+ * Best vague hint first: the one closest to the centre of the target's nearest
+ * words, so it fits the topic. Far down the list, "points back at the target"
+ * is unreliable: words get there through coincidences in the news text.
  */
-export async function chooseHints(
-  vocab: Vocabulary,
-  neighborLists: readonly (readonly string[])[],
-  avoid: Set<string>,
-): Promise<(Hint | null)[]> {
-  const perTarget = neighborLists.map((neighbors) => candidatesFor(vocab, neighbors, avoid));
+const byTopic = (vocab: Vocabulary, center: Float32Array) => {
+  const fit = (c: Candidate) =>
+    similarityTo(vocab, c.word, center) - (isPlural(vocab, vocab.words[c.word]) ? 0.05 : 0);
+  return (a: Candidate, b: Candidate) => fit(b) - fit(a) || a.rank - b.rank;
+};
 
-  // One pass per distinct candidate word, shared by every target that wants it.
+/**
+ * An order that weighs two orders equally: each candidate's positions in both
+ * are added up. On their own, "points back" lets in coincidental words and
+ * "fits the topic" lets in bland ones ("sauce", "day"); a hint good on both counts
+ * is specific and on topic.
+ */
+function bothWays(
+  candidates: readonly Candidate[],
+  ...orders: ((a: Candidate, b: Candidate) => number)[]
+): (a: Candidate, b: Candidate) => number {
+  const position = new Map<Candidate, number>();
+  for (const order of orders) {
+    [...candidates].sort(order).forEach((c, i) => position.set(c, (position.get(c) ?? 0) + i));
+  }
+  return (a, b) => position.get(a)! - position.get(b)! || a.rank - b.rank;
+}
+
+const toHint = (vocab: Vocabulary, c: Candidate): Hint => ({
+  word: vocab.words[c.word],
+  rank: c.rank,
+  backRank: c.backRank,
+});
+
+/**
+ * Fills in back ranks: where the target sits in each candidate's own neighbor
+ * list. Generic words ("away", "folks") sit close to everything, so the target
+ * is far down their lists; a good hint points back at its target. One pass per
+ * distinct candidate word, shared by every target that wants it.
+ */
+async function scoreBackRanks(
+  vocab: Vocabulary,
+  perTarget: readonly { target: number; candidates: Candidate[] }[],
+): Promise<void> {
   const requests = new Map<number, { threshold: number; candidate: Candidate }[]>();
-  perTarget.forEach((candidates, t) => {
-    const target = vocab.index.get(neighborLists[t][0])!;
+  for (const { target, candidates } of perTarget) {
     for (const candidate of candidates) {
       const list = requests.get(candidate.word) ?? [];
       list.push({ threshold: similarity(vocab, candidate.word, target), candidate });
       requests.set(candidate.word, list);
     }
-  });
+  }
   const entries = [...requests];
   const counts = await countCloser(
     vocab,
@@ -93,11 +147,76 @@ export async function chooseHints(
   entries.forEach(([, list], e) =>
     list.forEach((r, i) => (r.candidate.backRank = counts[e][i] + 1)),
   );
+}
 
-  return perTarget.map((candidates) => {
-    const score = (c: Candidate) => c.backRank * (isPlural(vocab, vocab.words[c.word]) ? 2 : 1);
-    const best = [...candidates].sort((a, b) => score(a) - score(b) || a.rank - b.rank)[0];
-    if (!best) return null;
-    return { word: vocab.words[best.word], rank: best.rank, backRank: best.backRank };
+/**
+ * Picks every target's hints. Medium is chosen first and exactly as it always
+ * was, so published puzzles keep their hints; easy and hard then avoid its word
+ * family (and each other's), and the extras avoid all three.
+ */
+export async function chooseAllHints(
+  vocab: Vocabulary,
+  neighborLists: readonly (readonly string[])[],
+  avoid: Set<string>,
+): Promise<TargetHints[]> {
+  const windows = Object.fromEntries(
+    LEVELS.map((level) => [level.id, level.hintRanks as readonly [number, number]]),
+  ) as Record<LevelId, readonly [number, number]>;
+  const extraWindow = CONFIG.extraHintRanks as readonly [number, number];
+
+  const perTarget = neighborLists.map((neighbors) => {
+    const levels = Object.fromEntries(
+      LEVELS.map((level) => [
+        level.id,
+        // Vague hints need to be very common words, or they read as random.
+        candidatesFor(
+          vocab,
+          neighbors,
+          windows[level.id],
+          avoid,
+          level.id === 'hard' ? 20 : EVERYDAY,
+        ),
+      ]),
+    ) as Record<LevelId, Candidate[]>;
+    const extras = candidatesFor(vocab, neighbors, extraWindow, avoid).filter(
+      (c) => !isInflected(vocab, vocab.words[c.word]),
+    );
+    const center = centroid(
+      vocab,
+      neighbors.slice(1, 21).map((w) => vocab.index.get(w)!),
+    );
+    return { target: vocab.index.get(neighbors[0])!, levels, extras, center };
+  });
+  await scoreBackRanks(
+    vocab,
+    perTarget.flatMap(({ target, levels, extras }) => [
+      ...Object.values(levels).map((candidates) => ({ target, candidates })),
+      { target, candidates: extras },
+    ]),
+  );
+
+  return perTarget.map(({ levels, extras, center }) => {
+    const taken: string[] = [];
+    const pick = (candidates: Candidate[], order = byQuality(vocab)) => {
+      const best = candidates
+        .filter((c) => !taken.some((word) => sameFamily(word, vocab.words[c.word])))
+        .sort(order)[0];
+      if (best) taken.push(vocab.words[best.word]);
+      return best ? toHint(vocab, best) : null;
+    };
+    const medium = pick(levels.medium);
+    const easy = pick(levels.easy);
+    const hard = pick(levels.hard, bothWays(levels.hard, byQuality(vocab), byTopic(vocab, center)));
+    const extraHints: Hint[] = [];
+    while (extraHints.length < HINT_SETTINGS.extras) {
+      const next = pick(extras);
+      if (!next) break;
+      extraHints.push(next);
+    }
+    return { levels: { easy, medium, hard }, extras: extraHints };
   });
 }
+
+/** Whether a first hint is good enough to give a new target a puzzle on a level. */
+export const isUsableHint = (level: LevelId, hint: Hint | null): hint is Hint =>
+  hint !== null && hint.backRank <= HINT_SETTINGS.maxBackRank[level];

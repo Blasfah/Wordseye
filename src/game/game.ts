@@ -2,15 +2,30 @@
  * The game as a pure state machine. Every function takes the current state
  * and the wall-clock time, and returns a new state without mutating the old.
  */
-import { CONFIG } from '../config';
 import { checkGuess, normalizeGuess, type GuessRejection } from './guess';
+import { rulesFor } from './levels';
 import { rankOf } from './puzzle';
-import type { GameState, Guess, Puzzle, RoundState, RoundStatus, Rules } from './types';
+import type {
+  GameState,
+  Guess,
+  LevelId,
+  Puzzle,
+  RankedWord,
+  RoundState,
+  RoundStatus,
+  Rules,
+} from './types';
 import { bullseyeZone, zoneForRank, zoneOrder } from './zones';
 
-export function newGame(puzzleNumber: number, rules: Rules = CONFIG): GameState {
+/** Rules default to the game's own level everywhere below. */
+export function newGame(
+  puzzleNumber: number,
+  level: LevelId,
+  rules: Rules = rulesFor(level),
+): GameState {
   return {
     puzzleNumber,
+    level,
     status: 'ready',
     startedAt: null,
     endedMs: null,
@@ -18,6 +33,7 @@ export function newGame(puzzleNumber: number, rules: Rules = CONFIG): GameState 
     rounds: Array.from({ length: rules.roundsPerGame }, () => ({
       status: 'upcoming',
       guesses: [],
+      extraHints: 0,
       startMs: null,
       endMs: null,
     })),
@@ -34,21 +50,33 @@ export function startGame(state: GameState, now: number): GameState {
   };
 }
 
-export const gameDurationMs = (rules: Rules = CONFIG) => rules.gameSeconds * 1000;
+export const gameDurationMs = (rules: Rules) => rules.gameSeconds * 1000;
 
 /** Milliseconds on the game clock: 0 before the start, frozen once finished. */
-export function gameClock(state: GameState, now: number, rules: Rules = CONFIG): number {
+export function gameClock(
+  state: GameState,
+  now: number,
+  rules: Rules = rulesFor(state.level),
+): number {
   if (state.endedMs !== null) return state.endedMs;
   if (state.startedAt === null) return 0;
   return clamp(now - state.startedAt, 0, gameDurationMs(rules));
 }
 
-export function timeLeftMs(state: GameState, now: number, rules: Rules = CONFIG): number {
+export function timeLeftMs(
+  state: GameState,
+  now: number,
+  rules: Rules = rulesFor(state.level),
+): number {
   return gameDurationMs(rules) - gameClock(state, now, rules);
 }
 
 /** Ends the game if the clock has run out. Call it on every tick. */
-export function syncClock(state: GameState, now: number, rules: Rules = CONFIG): GameState {
+export function syncClock(
+  state: GameState,
+  now: number,
+  rules: Rules = rulesFor(state.level),
+): GameState {
   if (state.status !== 'playing' || timeLeftMs(state, now, rules) > 0) return state;
   return finishRound(state, 'timeout', gameDurationMs(rules));
 }
@@ -78,7 +106,7 @@ export function submitGuess(
   raw: string,
   { puzzle, vocabulary }: GuessInput,
   now: number,
-  rules: Rules = CONFIG,
+  rules: Rules = rulesFor(previous.level),
 ): { state: GameState; outcome: GuessOutcome } {
   const state = syncClock(previous, now, rules);
   const word = normalizeGuess(raw);
@@ -93,6 +121,7 @@ export function submitGuess(
     vocabulary,
     hint: puzzleRound.hint,
     previous: round.guesses.map((g) => g.word),
+    revealed: revealedHints(round, puzzleRound.extras).map((h) => h.word),
   });
   if (reason) {
     const earlier = reason === 'duplicate' ? round.guesses.find((g) => g.word === word) : undefined;
@@ -133,10 +162,44 @@ export function submitGuess(
   };
 }
 
-export function skipRound(previous: GameState, now: number, rules: Rules = CONFIG): GameState {
+export function skipRound(
+  previous: GameState,
+  now: number,
+  rules: Rules = rulesFor(previous.level),
+): GameState {
   const state = syncClock(previous, now, rules);
   if (state.status !== 'playing') return state;
   return finishRound(state, 'skipped', gameClock(state, now, rules));
+}
+
+/** Extra hints left for the rest of the game: one shared allowance, not per round. */
+export function extraHintsLeft(state: GameState, rules: Rules = rulesFor(state.level)): number {
+  return rules.extraHints - state.rounds.reduce((sum, round) => sum + round.extraHints, 0);
+}
+
+/** The extra hint words shown so far in a round. */
+export function revealedHints(round: RoundState, extras: readonly RankedWord[]): RankedWord[] {
+  return extras.slice(0, round.extraHints);
+}
+
+/**
+ * Reveals the current round's next extra hint word, if the game has any left
+ * and the round has another to give. Hint words don't count as guesses.
+ */
+export function takeExtraHint(
+  previous: GameState,
+  puzzle: Puzzle,
+  now: number,
+  rules: Rules = rulesFor(previous.level),
+): GameState {
+  const state = syncClock(previous, now, rules);
+  if (state.status !== 'playing' || extraHintsLeft(state, rules) <= 0) return state;
+  const round = state.rounds[state.current];
+  if (round.extraHints >= puzzle.rounds[state.current].extras.length) return state;
+  return {
+    ...state,
+    rounds: replaceAt(state.rounds, state.current, { ...round, extraHints: round.extraHints + 1 }),
+  };
 }
 
 /** Closes the current round and opens the next one, or ends the game. */

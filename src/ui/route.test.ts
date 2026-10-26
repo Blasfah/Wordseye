@@ -31,3 +31,17 @@ describe('hrefFor', () => {
     }
   });
 });
+
+describe('levels in the address', () => {
+  it('reads and writes the level', () => {
+    expect(readRoute('?level=hard')).toEqual({ view: 'today', level: 'hard' });
+    expect(readRoute('?day=4&level=easy')).toEqual({ view: 'day', day: 4, level: 'easy' });
+    expect(readRoute('?practice&level=medium')).toEqual({ view: 'practice', level: 'medium' });
+    expect(hrefFor({ view: 'day', day: 4, level: 'easy' }, '/w/')).toBe('/w/?day=4&level=easy');
+    expect(hrefFor({ view: 'today', level: 'hard' }, '/w/')).toBe('/w/?level=hard');
+  });
+
+  it('ignores an unknown level', () => {
+    expect(readRoute('?level=extreme')).toEqual({ view: 'today' });
+  });
+});

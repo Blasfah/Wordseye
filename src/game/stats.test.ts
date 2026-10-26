@@ -5,6 +5,7 @@ import { PUZZLE, VOCABULARY, at } from './testing';
 
 const record = (puzzleNumber: number, score: number, bullseyes: number): GameRecord => ({
   puzzleNumber,
+  level: 'medium',
   score,
   bullseyes,
   rounds: 5,
@@ -14,15 +15,16 @@ const record = (puzzleNumber: number, score: number, bullseyes: number): GameRec
 
 describe('toRecord', () => {
   it('summarises a finished game', () => {
-    let state = startGame(newGame(PUZZLE.number), at(0));
+    let state = startGame(newGame(PUZZLE.number, PUZZLE.level), at(0));
     state = submitGuess(state, 'antique', { puzzle: PUZZLE, vocabulary: VOCABULARY }, at(4)).state;
-    state = syncClock(state, at(150));
+    state = syncClock(state, at(180));
     expect(toRecord(state)).toEqual({
       puzzleNumber: 42,
+      level: 'medium',
       score: 125,
       bullseyes: 1,
       rounds: 5,
-      timeUsedMs: 150_000,
+      timeUsedMs: 180_000,
       zones: ['bullseye', 'cold', null, null, null],
     });
   });
@@ -60,5 +62,19 @@ describe('gameTier', () => {
     expect(gameTier(record(1, 100, 0))).toBe('warm');
     expect(gameTier(record(1, 25, 0))).toBe('cool');
     expect(gameTier(record(1, 0, 0))).toBe('cold');
+  });
+});
+
+describe('levels in the history', () => {
+  it('keeps one record per puzzle and level', () => {
+    const easy = { ...record(5, 400, 4), level: 'easy' as const };
+    const hard = { ...record(5, 100, 0), level: 'hard' as const };
+    let history = addRecord([], easy);
+    history = addRecord(history, hard);
+    history = addRecord(history, { ...easy, score: 450 });
+    expect(history.map((r) => [r.level, r.score])).toEqual([
+      ['hard', 100],
+      ['easy', 450],
+    ]);
   });
 });

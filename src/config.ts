@@ -15,6 +15,19 @@ export const ZONES = [
 
 export type ZoneId = (typeof ZONES)[number]['id'];
 
+/**
+ * Each day has a puzzle per level. `hintRanks` is where in the secret word's
+ * neighbor list the first hint comes from (the puzzle build reads it), and
+ * `extraHints` how many extra words a player can reveal over the whole game.
+ */
+export const LEVELS = [
+  { id: 'easy', label: 'Easy', gameSeconds: 300, extraHints: 3, hintRanks: [11, 25] },
+  { id: 'medium', label: 'Medium', gameSeconds: 180, extraHints: 1, hintRanks: [20, 80] },
+  { id: 'hard', label: 'Hard', gameSeconds: 120, extraHints: 0, hintRanks: [100, 300] },
+] as const;
+
+export type LevelId = (typeof LEVELS)[number]['id'];
+
 export const CONFIG = {
   name: 'Wordseye',
 
@@ -29,8 +42,15 @@ export const CONFIG = {
   weekStartsOn: 1,
 
   roundsPerGame: 5,
-  /** One shared clock for the whole game. */
-  gameSeconds: 150,
+
+  /** Clock, first hint and extra hints per level (see LEVELS above). */
+  levels: LEVELS,
+  /** What new players start on. */
+  defaultLevel: 'easy' as LevelId,
+  /** Extra hints are words from this rank range: close, but never a bullseye. */
+  extraHintRanks: [11, 100],
+  /** A word comes back on another level only after this many days. */
+  levelReuseGapDays: 90,
 
   zones: ZONES,
 

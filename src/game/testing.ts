@@ -25,6 +25,7 @@ export function neighborsFor(
 
 export const PUZZLE: Puzzle = {
   number: 42,
+  level: 'medium',
   rounds: [
     createPuzzleRound(
       'value',
@@ -38,8 +39,9 @@ export const PUZZLE: Puzzle = {
         attic: 501,
         museum: 2000,
       }),
+      ['furniture', 'auction', 'dusty'],
     ),
-    createPuzzleRound('kitty', neighborsFor('kitten', { puppy: 3, cat: 6, cute: 50 })),
+    createPuzzleRound('kitty', neighborsFor('kitten', { puppy: 3, cat: 6, cute: 50 }), ['cute']),
     createPuzzleRound('odyssey', neighborsFor('journey', { voyage: 3, trip: 4 })),
     createPuzzleRound('banana', neighborsFor('potato', { tomato: 3, soup: 40 })),
     createPuzzleRound('majesty', neighborsFor('king', { queen: 2, throne: 30 })),

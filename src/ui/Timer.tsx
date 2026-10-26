@@ -1,11 +1,10 @@
-import { CONFIG } from '../config';
 import { formatClock } from '../game/share';
-import { timeLeft } from './state';
+import { gameLength, timeLeft } from './state';
 
 /** A thin bar that empties as the shared clock runs, warming in colour near the end. */
 export function Timer() {
   const left = timeLeft.value;
-  const fraction = left / (CONFIG.gameSeconds * 1000);
+  const fraction = left / gameLength.value;
   const mood = fraction > 0.5 ? 'calm' : fraction > 0.2 ? 'warm' : 'hot';
   const clock = formatClock(left);
   return (

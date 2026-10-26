@@ -7,7 +7,7 @@ import type { GameState } from './types';
 const input = { puzzle: PUZZLE, vocabulary: VOCABULARY };
 
 function play(steps: ([word: string, seconds: number] | ['skip', number])[]): GameState {
-  let state = startGame(newGame(PUZZLE.number), at(0));
+  let state = startGame(newGame(PUZZLE.number, PUZZLE.level), at(0));
   for (const [word, seconds] of steps) {
     state =
       word === 'skip'
@@ -106,7 +106,7 @@ describe('scoreGame', () => {
   it('uses the full clock when time runs out', () => {
     const state = syncClock(play([['antique', 5]]), at(200));
     const score = scoreGame(state);
-    expect(score.timeUsedMs).toBe(150_000);
+    expect(score.timeUsedMs).toBe(180_000);
     expect(score.rounds.map((r) => r.zone)).toEqual(['bullseye', 'cold', null, null, null]);
   });
 });

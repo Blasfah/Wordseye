@@ -257,3 +257,10 @@ html:has(.words-dialog[open]) {
 .words-scroll[data-limit='10'] .words-word {
   font-size: 1.1875rem;
 }
+
+.words-item.is-hinted .words-word {
+  font-style: italic;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 0.2em;
+}

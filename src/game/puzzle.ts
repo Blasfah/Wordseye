@@ -1,13 +1,23 @@
 import type { PuzzleRound } from './types';
 
-/** `neighbors` is in rank order and starts with the target itself. */
-export function createPuzzleRound(hint: string, neighbors: readonly string[]): PuzzleRound {
+/**
+ * `neighbors` is in rank order and starts with the target itself. `extras` are
+ * the extra hint words, which must be among the neighbors.
+ */
+export function createPuzzleRound(
+  hint: string,
+  neighbors: readonly string[],
+  extras: readonly string[] = [],
+): PuzzleRound {
   if (neighbors.length === 0) throw new Error('A round needs at least its target word');
   const ranks = new Map<string, number>();
   neighbors.forEach((word, i) => {
     if (!ranks.has(word)) ranks.set(word, i + 1);
   });
-  return { hint, target: neighbors[0], ranks };
+  const ranked = extras
+    .filter((word) => ranks.has(word))
+    .map((word) => ({ word, rank: ranks.get(word)! }));
+  return { hint, target: neighbors[0], ranks, extras: ranked };
 }
 
 export function rankOf(round: PuzzleRound, word: string): number | null {

@@ -17,7 +17,7 @@ describe('formatClock', () => {
 
 describe('shareText', () => {
   it('shows the score, a circle per round and the time, without spoilers', () => {
-    let state = startGame(newGame(PUZZLE.number), at(0));
+    let state = startGame(newGame(PUZZLE.number, PUZZLE.level), at(0));
     const moves: [string, number][] = [
       ['antique', 5], // bullseye
       ['cute', 10], // hot
@@ -30,17 +30,17 @@ describe('shareText', () => {
           ? skipRound(state, at(seconds))
           : submitGuess(state, word, input, at(seconds)).state;
     }
-    state = syncClock(state, at(150)); // round 4 times out with no guesses, round 5 never starts
+    state = syncClock(state, at(180)); // round 4 times out with no guesses, round 5 never starts
 
     const text = shareText(state);
-    expect(text).toBe('Wordseye #42 · 185 pts\n🟡🔴🔵🔵⚪ · 2:30');
+    expect(text).toBe('Wordseye #42 · Medium · 185 pts\n🟡🔴🔵🔵⚪ · 3:00');
     for (const secret of ['antique', 'kitten', 'cute', 'value']) expect(text).not.toContain(secret);
   });
 
   it('uses the configured name', () => {
-    const state = startGame(newGame(3), at(0));
+    const state = startGame(newGame(3, 'hard'), at(0));
     expect(shareText(state, undefined, { name: 'Warmer', unplayedEmoji: '·' })).toMatch(
-      /^Warmer #3 · 0 pts\n🔵····/,
+      /^Warmer #3 · Hard · 0 pts\n🔵····/,
     );
   });
 });

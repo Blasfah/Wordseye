@@ -1,17 +1,32 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { CONFIG } from '../config';
+import { revealedHints } from '../game/game';
+import { levelInfo } from '../game/levels';
 import { GuessList } from './GuessList';
 import { RoundDots } from './RoundDots';
 import { Timer } from './Timer';
 import { feedbackMessage } from './messages';
-import { feedback, game, guess, isPractice, puzzle, skip } from './state';
+import {
+  feedback,
+  game,
+  guess,
+  hintsLeft,
+  isPractice,
+  puzzle,
+  revealExtraHint,
+  skip,
+} from './state';
 
 export function Round() {
   const state = game.value;
   const today = puzzle.value!;
   const index = state.current;
   const round = state.rounds[index];
-  const { hint } = today.rounds[index];
+  const { hint, extras } = today.rounds[index];
+  const level = levelInfo(state.level);
+  const revealed = revealedHints(round, extras);
+  const left = hintsLeft.value;
+  const canReveal = left > 0 && revealed.length < extras.length;
 
   const latestFeedback = feedback.value;
   const message = latestFeedback ? feedbackMessage(latestFeedback, today) : null;
@@ -34,6 +49,11 @@ export function Round() {
     setText('');
     input.current?.focus();
   }, []);
+
+  const onHint = () => {
+    revealExtraHint();
+    input.current?.focus();
+  };
 
   useLayoutEffect(() => input.current?.focus(), []);
 
@@ -80,8 +100,8 @@ export function Round() {
             <span key={`bloom-${latestFeedback!.id}`} class="bloom" aria-hidden="true" />
           )}
           <p class="hint-label">
-            Round {index + 1} of {state.rounds.length}
-            {isPractice.value && ' · practice'}
+            Round {index + 1} of {state.rounds.length} · {level.label}
+            {isPractice.value && ' practice'}
           </p>
           <p
             key={`hint-${index}`}
@@ -135,11 +155,22 @@ export function Round() {
           >
             Skip round <kbd>{CONFIG.skipKey === 'Escape' ? 'Esc' : CONFIG.skipKey}</kbd>
           </button>
+          {level.extraHints > 0 && (
+            <button
+              type="button"
+              class="button button-quiet extra-hint-button"
+              onClick={onHint}
+              disabled={!canReveal}
+            >
+              Extra hint <span class="hint-count">{left} left</span>
+            </button>
+          )}
         </div>
       </div>
 
       <GuessList
         guesses={round.guesses}
+        hints={revealed}
         roundIndex={index}
         latest={latest}
         warmer={!!accepted && accepted.guess === latest && accepted.warmerZone}

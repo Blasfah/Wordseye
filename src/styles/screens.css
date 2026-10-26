@@ -413,15 +413,7 @@
   transform: translateY(-1px);
 }
 
-.calendar-day[data-zone] > a {
-  background: color-mix(in srgb, var(--zone-tint) 80%, var(--paper));
-}
-
-.calendar-day[data-zone] > a:hover {
-  background: var(--zone-tint);
-}
-
-.calendar-day[data-today]:not([data-zone]) > a {
+.calendar-day[data-today] > a {
   background: var(--ink);
   color: var(--ink-inverse);
 }
@@ -440,19 +432,27 @@
   font-variant-numeric: tabular-nums;
 }
 
-.calendar-score {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.75;
+/* A dot per level: coloured by how that game went, faint until it's played. */
+.calendar-levels {
+  display: flex;
+  gap: 0.18rem;
+  margin-top: 0.2rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  .calendar-day[data-zone] > a,
-  .calendar-day[data-zone] > a:hover {
-    background: var(--zone-tint);
-    color: var(--zone-ink);
-  }
+.calendar-level {
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.calendar-level[data-zone] {
+  background: var(--zone-mark);
+  transform: scale(1.15);
+}
+
+.calendar-key {
+  margin-top: 1rem;
 }
 
 .calendar-legend {
@@ -502,4 +502,94 @@
 
 .nav-link:hover {
   color: var(--ink);
+}
+
+/* ---------------------------------------------------------------- levels */
+
+.level-picker {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin-top: 1.5rem;
+}
+
+.level-option {
+  flex: 1;
+  max-width: 9.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.05rem;
+  padding: 0.55rem 0.5rem;
+  border: 0;
+  border-radius: var(--radius-soft);
+  background: var(--paper-deep);
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-quick) ease,
+    transform var(--duration-quick) ease;
+}
+
+.level-option:hover {
+  background: var(--paper-deeper);
+}
+
+.level-option:active {
+  transform: scale(0.97);
+}
+
+.level-option[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--ink-inverse);
+}
+
+.level-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.125rem;
+  line-height: 1.2;
+}
+
+.level-detail {
+  font-size: 0.75rem;
+  font-weight: 700;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.level-option[data-done]:not([aria-pressed='true']) .level-detail {
+  color: var(--mark-cool);
+  opacity: 1;
+  filter: brightness(0.75);
+}
+
+.level-blurb {
+  min-height: 1.6em;
+  margin-top: 0.6rem;
+}
+
+.start .howto {
+  margin-top: 1.25rem;
+}
+
+.try-next {
+  margin-top: 1.75rem;
+}
+
+.try-next + .share {
+  margin-top: 0.5rem;
+}
+
+.results-levels {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 2.5rem;
+}
+
+.results-levels .level-picker {
+  margin-top: 0.85rem;
 }

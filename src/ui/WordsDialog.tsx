@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { sortGuesses } from '../game/game';
 import { topWords } from '../game/puzzle';
 import type { RoundScore } from '../game/scoring';
-import type { Guess, PuzzleRound } from '../game/types';
+import type { Guess, PuzzleRound, RankedWord } from '../game/types';
 import { rankBands, zoneInfo } from '../game/zones';
 import { cls, rankLabel } from './helpers';
 
@@ -11,6 +11,8 @@ interface Props {
   puzzleRound: PuzzleRound;
   score: RoundScore;
   guesses: readonly Guess[];
+  /** Extra hint words revealed in this round. */
+  revealed: readonly RankedWord[];
   onClose: () => void;
 }
 
@@ -19,7 +21,7 @@ const LIMITS = BANDS.map((band) => band.to);
 const LISTED_GUESSES = 8;
 
 /** A pop-up in the round's colour showing the words that sat closest to its secret. */
-export function WordsDialog({ index, puzzleRound, score, guesses, onClose }: Props) {
+export function WordsDialog({ index, puzzleRound, score, guesses, revealed, onClose }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const sheet = useRef<HTMLDivElement>(null);
   const [limit, setLimit] = useState(LIMITS[0]);
@@ -44,6 +46,7 @@ export function WordsDialog({ index, puzzleRound, score, guesses, onClose }: Pro
 
   const close = () => dialog.current?.close();
   const guessed = new Set(guesses.map((g) => g.word));
+  const hinted = new Set(revealed.map((h) => h.word));
   const words = topWords(puzzleRound, limit);
   const found = words.filter((w) => guessed.has(w.word)).length;
   const sorted = sortGuesses(guesses);
@@ -89,6 +92,12 @@ export function WordsDialog({ index, puzzleRound, score, guesses, onClose }: Pro
                 .map((g) => `${g.word} ${rankLabel(g.rank)}`)
                 .join(' · ')}
               {extra > 0 && ` and ${extra} more`}
+            </p>
+          )}
+          {revealed.length > 0 && (
+            <p class="words-guesses">
+              Extra {revealed.length === 1 ? 'hint' : 'hints'}{' '}
+              {revealed.map((h) => `${h.word} #${h.rank}`).join(' · ')}
             </p>
           )}
         </div>
@@ -137,12 +146,14 @@ export function WordsDialog({ index, puzzleRound, score, guesses, onClose }: Pro
                       class={cls(
                         'words-item',
                         guessed.has(word) && 'is-guessed',
+                        hinted.has(word) && 'is-hinted',
                         rank === 1 && 'is-target',
                       )}
                     >
                       <span class="words-rank">{rank}</span>
                       <span class="words-word">{word}</span>
                       {guessed.has(word) && <span class="visually-hidden"> (your guess)</span>}
+                      {hinted.has(word) && <span class="visually-hidden"> (extra hint)</span>}
                     </li>
                   ))}
               </ol>

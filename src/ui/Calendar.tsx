@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { CONFIG } from '../config';
+import { CONFIG, LEVELS, type LevelId } from '../config';
 import { addMonths, compareMonths, monthDays, monthOf, type Month } from '../game/calendar';
 import { dateForDay, dayForDate } from '../game/daily';
 import { gameTier, type GameRecord } from '../game/stats';
@@ -26,9 +26,16 @@ export function Calendar() {
   const heading = useRef<HTMLHeadingElement>(null);
   useLayoutEffect(() => heading.current?.focus(), []);
 
-  const records = new Map(history.value.map((r) => [r.puzzleNumber, r]));
+  // Each day's finished games, by level.
+  const records = new Map<number, Partial<Record<LevelId, GameRecord>>>();
+  for (const record of history.value) {
+    records.set(record.puzzleNumber, {
+      ...records.get(record.puzzleNumber),
+      [record.level]: record,
+    });
+  }
   const pastDays = todayNumber - 1;
-  const playedPast = history.value.filter((r) => r.puzzleNumber < todayNumber).length;
+  const playedPast = [...records.keys()].filter((day) => day < todayNumber).length;
   const todayPlayed = records.has(todayNumber);
   const prev = addMonths(shown, -1);
   const next = addMonths(shown, 1);
@@ -43,7 +50,7 @@ export function Calendar() {
       <p class="quiet">
         {pastDays === 0
           ? 'Today is the very first puzzle. Earlier ones will collect here.'
-          : `You've played ${playedPast} of ${pastDays}. Pick any day to play it.`}
+          : `You've played ${playedPast} of ${pastDays} past days. Pick any day to play it.`}
       </p>
 
       <div class="calendar-month">
@@ -83,7 +90,7 @@ export function Calendar() {
                 key={date}
                 date={date}
                 todayNumber={todayNumber}
-                record={records.get(dayForDate(date, CONFIG.firstPuzzleDate))}
+                played={records.get(dayForDate(date, CONFIG.firstPuzzleDate)) ?? {}}
               />
             ) : (
               <li key={`pad-${i}`} aria-hidden="true" />
@@ -91,6 +98,9 @@ export function Calendar() {
           )}
         </ol>
 
+        <p class="calendar-key quiet small" aria-hidden="true">
+          Each day has a dot per level: {LEVELS.map((l) => l.label).join(', ')}.
+        </p>
         <p class="calendar-legend" aria-hidden="true">
           {CONFIG.zones.map((zone) => (
             <span key={zone.id} data-zone={zone.id}>
@@ -101,11 +111,13 @@ export function Calendar() {
       </div>
 
       <a class="button button-primary" href={hrefFor({ view: 'today' }, location.pathname)}>
-        {todayPlayed ? "See today's result" : "Play today's puzzle"}
+        {todayPlayed ? "Back to today's puzzles" : "Play today's puzzle"}
       </a>
 
       <div class="calendar-stats">
-        <Stats />
+        {LEVELS.map(({ id }) => (
+          <Stats key={id} level={id} />
+        ))}
       </div>
       <NavLinks />
     </section>
@@ -115,11 +127,11 @@ export function Calendar() {
 function DayCell({
   date,
   todayNumber,
-  record,
+  played,
 }: {
   date: string;
   todayNumber: number;
-  record: GameRecord | undefined;
+  played: Partial<Record<LevelId, GameRecord>>;
 }) {
   const day = dayForDate(date, CONFIG.firstPuzzleDate);
   const dayOfMonth = Number(date.slice(8));
@@ -135,18 +147,28 @@ function DayCell({
   }
 
   const isToday = day === todayNumber;
-  const state = record ? `played, ${record.score} points` : 'not played yet';
+  const state = LEVELS.map(({ id, label }) => {
+    const record = played[id];
+    return `${label} ${record ? `${record.score} points` : 'not played'}`;
+  }).join(', ');
   const label = `Puzzle #${day}, ${formatPuzzleDate(date)}${isToday ? ', today' : ''}: ${state}`;
   const href = hrefFor(isToday ? { view: 'today' } : { view: 'day', day }, location.pathname);
   return (
-    <li
-      class="calendar-day"
-      data-zone={record ? gameTier(record) : undefined}
-      data-today={isToday || undefined}
-    >
+    <li class="calendar-day" data-today={isToday || undefined}>
       <a href={href} aria-label={label}>
         <span class="calendar-date">{dayOfMonth}</span>
-        {record && <span class="calendar-score">{record.score}</span>}
+        <span class="calendar-levels" aria-hidden="true">
+          {LEVELS.map(({ id }) => {
+            const record = played[id];
+            return (
+              <span
+                key={id}
+                class="calendar-level"
+                data-zone={record ? gameTier(record) : undefined}
+              />
+            );
+          })}
+        </span>
       </a>
     </li>
   );

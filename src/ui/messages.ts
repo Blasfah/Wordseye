@@ -1,6 +1,6 @@
 import { CONFIG, RANKED_NEIGHBORS } from '../config';
 import type { Puzzle, ZoneId } from '../game/types';
-import { zoneInfo } from '../game/zones';
+import { zoneForRank, zoneInfo } from '../game/zones';
 import type { Feedback } from './state';
 
 export interface Message {
@@ -20,6 +20,14 @@ export function feedbackMessage(feedback: Feedback, puzzle: Puzzle): Message | n
     };
   }
 
+  if (feedback.kind === 'extra-hint') {
+    const left = feedback.left === 0 ? 'That was your last one.' : `${feedback.left} left.`;
+    return {
+      text: `Extra hint: “${feedback.word}” is #${feedback.rank}. ${left}`,
+      zone: zoneForRank(feedback.rank),
+    };
+  }
+
   const outcome = feedback.outcome;
   if (outcome.kind === 'rejected') {
     switch (outcome.reason) {
@@ -27,6 +35,8 @@ export function feedbackMessage(feedback: Feedback, puzzle: Puzzle): Message | n
         return { text: `“${outcome.word}” isn't in our word list. Try another?` };
       case 'not-a-word':
         return { text: 'Just one word, letters only.' };
+      case 'revealed':
+        return { text: `“${outcome.word}” is one of your extra hints. Try a word near it.` };
       case 'hint':
         return { text: "That's the hint, or a form of it. Try a word near it." };
       case 'duplicate': {
